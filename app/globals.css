@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f0f4f8;
+  --foreground: #0f172a;
+  --primary: #1a3a5c;
+  --primary-light: #2563eb;
+  --primary-dark: #0f2744;
+  --accent: #c8a44e;
+  --accent-light: #e2c574;
+  --accent-dark: #a68932;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --sidebar-bg: #0f2744;
+  --sidebar-text: #cbd5e1;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+}
+
+::selection {
+  background-color: var(--accent);
+  color: #ffffff;
+}
+
+/* Animated gradient background for hero sections */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(200, 164, 78, 0.15); }
+  50% { box-shadow: 0 0 40px rgba(200, 164, 78, 0.3); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Professional card styles */
+.card-pro {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-pro:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.04);
+  transform: translateY(-2px);
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass morphism */
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Professional scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Staggered animation delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Page background pattern */
+.bg-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(15, 39, 68, 0.03) 1px, transparent 0);
+  background-size: 40px 40px;
+}
+
+/* Professional table row hover */
+.table-row-pro {
+  transition: all 0.2s ease;
+}
+
+.table-row-pro:hover {
+  background-color: rgba(37, 99, 235, 0.03);
+}
+
+/* Loading skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+/* Mobile / Small-screen fixes to avoid overlapping decorative elements */
+/* Prevent horizontal overflow caused by large absolute decorations */
+html, body {
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  /* Hide large decorative blurred circles on small screens */
+  .blur-3xl {
+    display: none !important;
+  }
+
+  /* Make common max-width helpers more forgiving on small screens */
+  .max-w-6xl, .max-w-5xl, .max-w-2xl, .max-w-lg, .max-w-md, .max-w-sm {
+    max-width: 96% !important;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  /* Make fixed toasts span the width nicely on mobile */
+  .fixed.bottom-6.left-6 {
+    left: 1rem !important;
+    right: 1rem !important;
+    width: auto !important;
+    text-align: center;
+  }
+
+  /* Reduce exaggerated negative margins for some utilities (best-effort) */
+  [class*="-ml-48"], [class*="-mr-\["], [class*="-mt-48"], [class*="-mb-\["] {
+    margin: 0 !important;
+  }
+
+  /* Hide common floating quick-action buttons and chat bubbles on small screens */
+  .fab, .floating-action, .floating-btn, .quick-action, .float-btn, .chat-bubble {
+    display: none !important;
+  }
+
+  /* Make main content safer from left/right overlaps on small screens */
+  main, .max-w-6xl, .max-w-5xl {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* Lower intensity of card absolute decorations to avoid overflow on very small screens */
+  .card-pro .absolute {
+    transform: translate3d(0,0,0) !important;
+    max-width: 40% !important;
+    opacity: 0.9 !important;
+  }
+}
