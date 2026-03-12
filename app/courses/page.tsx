@@ -259,8 +259,8 @@ export default function CoursesPage() {
 
   const sortedCourses = [...filteredCourses].sort((a, b) => {
     if (!sortConfig) return 0;
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
+    const aValue = a[sortConfig.key] ?? '';
+    const bValue = b[sortConfig.key] ?? '';
     
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;

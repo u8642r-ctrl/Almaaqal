@@ -11,7 +11,7 @@ const handler = NextAuth({
       },
       async authorize(credentials, req) {
         // هذا إعداد افتراضي لإصلاح الخطأ، يمكنك تعديله لاحقاً لربطه بقاعدة البيانات
-        return { id: "1", name: "Admin", email: "admin@university.edu" }
+        return { id: "1", name: "Admin", email: "admin@university.edu", role: "admin" }
       }
     })
   ],
