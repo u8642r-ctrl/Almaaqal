@@ -10,10 +10,18 @@ export async function GET() {
   }
 
   try {
-    const result = await pool.query(
+    let result = await pool.query(
       "SELECT id, name, email, phone, department, created_at FROM teachers WHERE email = $1",
       [session.user.email]
     );
+
+    // إذا لم يوجد سجل أستاذ، ننشئه تلقائياً
+    if (result.rows.length === 0) {
+      result = await pool.query(
+        "INSERT INTO teachers (name, email) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name RETURNING id, name, email, phone, department, created_at",
+        [session.user.name || "تدريسي", session.user.email]
+      );
+    }
 
     if (result.rows.length === 0) {
       return NextResponse.json({ error: "لم يتم العثور على بيانات الأستاذ" }, { status: 404 });

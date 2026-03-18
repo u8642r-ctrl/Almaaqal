@@ -17,8 +17,8 @@ const pool = new Pool(
 
 let dbInitialized = false;
 
-export async function initDatabase() {
-  if (dbInitialized) return;
+export async function initDatabase(force = false) {
+  if (dbInitialized && !force) return;
 
   try {
     // جدول المستخدمين (تسجيل الدخول)
@@ -105,6 +105,37 @@ export async function initDatabase() {
       )
     `);
 
+    // جدول المحتوى التعليمي (محاضرات / واجبات)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS course_contents (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+        teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        content_type VARCHAR(20) NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        due_date TIMESTAMP NULL,
+        file_name VARCHAR(255),
+        file_data LONGTEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // جدول تصحيح الواجبات ودرجاتها
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS homework_grades (
+        id SERIAL PRIMARY KEY,
+        content_id INTEGER REFERENCES course_contents(id) ON DELETE CASCADE,
+        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+        submission_text TEXT,
+        submitted_at TIMESTAMP NULL,
+        grade DECIMAL(5,2),
+        feedback TEXT,
+        graded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(content_id, student_id)
+      )
+    `);
+
     // جدول الكليات
     await pool.query(`
       CREATE TABLE IF NOT EXISTS faculties (
@@ -132,13 +163,39 @@ export async function initDatabase() {
     const alterQueries = [
       "ALTER TABLE students ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
       "ALTER TABLE students ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
+      "ALTER TABLE students ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
       "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
       "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
       "ALTER TABLE courses ADD COLUMN IF NOT EXISTS description TEXT",
       "ALTER TABLE courses ADD COLUMN IF NOT EXISTS teacher_id INTEGER",
+      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
+      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS term VARCHAR(10)",
+      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS department_id INTEGER",
+      "ALTER TABLE students ADD COLUMN IF NOT EXISTS accessible_stages TEXT",
+      "ALTER TABLE grades ADD COLUMN IF NOT EXISTS pass_type VARCHAR(20) DEFAULT 'first_round'",
+      "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS is_carried_over BOOLEAN DEFAULT FALSE",
+      "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS original_stage VARCHAR(10)",
+      "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'",
     ];
     for (const q of alterQueries) {
       try { await pool.query(q); } catch { /* العمود موجود مسبقاً */ }
+    }
+
+    // تحديث البيانات الموجودة: تعيين accessible_stages للطلاب لتشمل جميع المراحل من 1 إلى مرحلتهم الحالية
+    try {
+      await pool.query(`
+        UPDATE students
+        SET accessible_stages = CASE
+          WHEN stage = '4' THEN '["1","2","3","4"]'
+          WHEN stage = '3' THEN '["1","2","3"]'
+          WHEN stage = '2' THEN '["1","2"]'
+          WHEN stage = '1' THEN '["1"]'
+          ELSE '["1","2","3","4"]'
+        END
+        WHERE accessible_stages IS NULL OR accessible_stages = '' OR accessible_stages = '[]'
+      `);
+    } catch (err) {
+      console.log("تحديث accessible_stages فشل، سيتم تجاهلها:", err);
     }
 
     // إدخال المستخدمين الافتراضيين

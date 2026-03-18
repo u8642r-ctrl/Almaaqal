@@ -38,18 +38,33 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  
+
   if (!id) return NextResponse.json({ error: 'رقم الأستاذ مطلوب' }, { status: 400 });
-  
+
   try {
     const { name, email, phone, department } = await req.json();
     if (!name || !email) {
       return NextResponse.json({ error: 'الاسم والبريد الإلكتروني مطلوبان' }, { status: 400 });
     }
+
+    // جلب البريد القديم
+    const oldTeacher = await pool.query('SELECT email FROM teachers WHERE id = $1', [id]);
+    const oldEmail = oldTeacher.rows[0]?.email;
+
+    // تحديث جدول المعلمين
     await pool.query(
       'UPDATE teachers SET name = $1, email = $2, phone = $3, department = $4 WHERE id = $5',
       [name, email, phone || null, department || null, id]
     );
+
+    // تحديث جدول المستخدمين إذا تغير البريد الإلكتروني
+    if (oldEmail && oldEmail !== email) {
+      await pool.query(
+        'UPDATE users SET email = $1, name = $2 WHERE email = $3 AND role = $4',
+        [email, name, oldEmail, 'teacher']
+      );
+    }
+
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (err: any) {
     let msg = 'خطأ في قاعدة البيانات';

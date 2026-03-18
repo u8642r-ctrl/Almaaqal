@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useZxing } from "react-zxing";
 
 // مكوّن منفصل للكاميرا حتى لا يتأثر الـ hook بالشروط
@@ -57,6 +58,7 @@ function BarcodeScanner({ onScan, onClose }: { onScan: (code: string) => void; o
 
 export default function StudentScanPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [sessionCode, setSessionCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
@@ -199,13 +201,25 @@ export default function StudentScanPage() {
   return (
     <div className="min-h-screen bg-[#f0f4f8] bg-pattern p-3 sm:p-4 md:p-8 font-sans overflow-x-hidden" dir="rtl">
       <div className="w-full max-w-2xl mx-auto space-y-4 md:space-y-6">
-        <div className="text-center animate-fade-in-up">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
-            <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">لوحة الطالب</p>
+        <div className="animate-fade-in-up">
+          <div className="flex items-center gap-4 mb-3">
+            <button
+              onClick={() => router.back()}
+              className="w-10 h-10 rounded-xl bg-white shadow flex items-center justify-center hover:bg-slate-50 transition-all"
+            >
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div className="text-center flex-1">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
+                <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">لوحة الطالب</p>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">تسجيل الحضور</h1>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">تسجيل الحضور</h1>
-          <p className="text-slate-500 text-xs md:text-sm mt-1">امسح باركود المحاضرة بالكاميرا أو أدخل الرمز يدوياً</p>
+          <p className="text-slate-500 text-xs md:text-sm mt-1 text-center">امسح باركود المحاضرة بالكاميرا أو أدخل الرمز يدوياً</p>
         </div>
 
         <div className="bg-gradient-to-br from-[#0f2744] to-[#1a3a5c] rounded-2xl p-6 md:p-10 shadow-2xl text-white relative overflow-hidden">

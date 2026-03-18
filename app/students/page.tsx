@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 
 // تعريف نوع بيانات الطالب
 type Student = {
@@ -9,10 +10,12 @@ type Student = {
   email: string;
   phone: string;
   department: string;
+  stage?: string;
   created_at: string;
 };
 
 export default function StudentsPage() {
+  const router = useRouter();
   // ---------------------------------------------------------
   // الحالات (States)
   // ---------------------------------------------------------
@@ -25,6 +28,7 @@ export default function StudentsPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("");
+  const [stage, setStage] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -34,6 +38,7 @@ export default function StudentsPage() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
+  const [editStage, setEditStage] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
   // حالات الكليات والأقسام
@@ -88,24 +93,36 @@ export default function StudentsPage() {
     e.preventDefault();
     setFormError(null);
     setFormLoading(true);
-    
+
     try {
       const res = await fetch('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, department, password })
+        body: JSON.stringify({ name, email, phone, department, stage, password })
       });
-      
+
       if (res.ok) {
+        const newStudent = await res.json();
+
+        // تسجيل الطالب تلقائياً في المواد الخاصة بمرحلته
+        if (stage) {
+          await fetch('/api/enrollments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ student_id: newStudent.id, auto_enroll: true })
+          });
+        }
+
         setName("");
         setEmail("");
         setPhone("");
         setDepartment("");
+        setStage("");
         setPassword("");
         setSelectedFacultyId("");
         setShowForm(false);
         fetchStudents();
-        setToast({ message: "تم إضافة الطالب بنجاح", type: 'success' });
+        setToast({ message: "تم إضافة الطالب بنجاح والتسجيل في المواد تلقائياً", type: 'success' });
       } else {
         const data = await res.json();
         setFormError(data.error || 'حدث خطأ أثناء الإضافة');
@@ -115,6 +132,18 @@ export default function StudentsPage() {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const handleOpenForm = () => {
+    setShowForm(true);
+    // توليد بريد إلكتروني تلقائي بناءً على عدد الطلاب
+    const nextNumber = students.length + 1;
+    setEmail(`student${nextNumber}@almaqal.edu.iq`);
+    setName("");
+    setPhone("");
+    setDepartment("");
+    setPassword("");
+    setSelectedFacultyId("");
   };
 
   // فتح نافذة تأكيد الحذف
@@ -142,6 +171,7 @@ export default function StudentsPage() {
     setEditEmail(student.email);
     setEditPhone(student.phone || "");
     setEditDepartment(student.department || "");
+    setEditStage(student.stage || "");
     // تحديد الكلية تلقائياً بناءً على القسم الحالي
     const dept = allDepartments.find(d => d.name === student.department);
     setEditSelectedFacultyId(dept ? String(dept.faculty_id) : "");
@@ -154,7 +184,7 @@ export default function StudentsPage() {
       await fetch(`/api/students?id=${editId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, email: editEmail, phone: editPhone, department: editDepartment })
+        body: JSON.stringify({ name: editName, email: editEmail, phone: editPhone, department: editDepartment, stage: editStage })
       });
       setEditId(null);
       fetchStudents();
@@ -178,7 +208,8 @@ export default function StudentsPage() {
     if (!sortConfig) return 0;
     const aValue = a[sortConfig.key];
     const bValue = b[sortConfig.key];
-    
+
+    if (aValue == null || bValue == null) return 0;
     if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
@@ -199,16 +230,37 @@ export default function StudentsPage() {
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-4 md:gap-6 animate-fade-in-up">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
-              <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">لوحة التحكم</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 rounded-xl hover:bg-white transition-all hover:shadow-md"
+              title="رجوع"
+            >
+              <svg
+                className="w-6 h-6 text-[#0f2744]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
+                <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">لوحة التحكم</p>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">سجل الطلاب</h1>
+              <p className="text-slate-500 text-xs md:text-sm mt-1">إدارة شاملة لبيانات الطلاب المسجلين في النظام الجامعي</p>
             </div>
-            <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">سجل الطلاب</h1>
-            <p className="text-slate-500 text-xs md:text-sm mt-1">إدارة شاملة لبيانات الطلاب المسجلين في النظام الجامعي</p>
           </div>
-          <button 
-            onClick={() => setShowForm(true)}
+          <button
+            onClick={handleOpenForm}
             className="group flex items-center justify-center gap-2 md:gap-3 bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] text-white px-4 md:px-7 py-2.5 md:py-3.5 rounded-xl text-sm md:text-base font-bold shadow-lg shadow-[#0f2744]/15 transition-all active:scale-[0.98] w-full md:w-auto"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">
@@ -382,6 +434,9 @@ export default function StudentsPage() {
                     <th className="p-6 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('department')}>
                       القسم {sortConfig?.key === 'department' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
+                    <th className="p-6 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('stage')}>
+                      المرحلة {sortConfig?.key === 'stage' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th className="p-6 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('phone')}>
                       الهاتف {sortConfig?.key === 'phone' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
@@ -447,6 +502,25 @@ export default function StudentsPage() {
                           </div>
                         ) : (
                           <span className="text-slate-600 font-medium text-sm">{student.department || '-'}</span>
+                        )}
+                      </td>
+                      <td className="p-6">
+                        {editId === student.id ? (
+                          <select
+                            className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 text-xs text-slate-700"
+                            value={editStage}
+                            onChange={e => setEditStage(e.target.value)}
+                          >
+                            <option value="">-- المرحلة --</option>
+                            <option value="1">المرحلة الأولى</option>
+                            <option value="2">المرحلة الثانية</option>
+                            <option value="3">المرحلة الثالثة</option>
+                            <option value="4">المرحلة الرابعة</option>
+                          </select>
+                        ) : (
+                          <span className="text-slate-600 font-medium text-sm">
+                            {student.stage ? `المرحلة ${student.stage}` : '-'}
+                          </span>
                         )}
                       </td>
                       <td className="p-6">
@@ -526,6 +600,13 @@ export default function StudentsPage() {
                               {allDepartments.filter(d => String(d.faculty_id) === editSelectedFacultyId).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                             </select>
                           </div>
+                          <select className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none text-slate-700 col-span-2" value={editStage} onChange={e => setEditStage(e.target.value)}>
+                            <option value="">-- المرحلة --</option>
+                            <option value="1">المرحلة الأولى</option>
+                            <option value="2">المرحلة الثانية</option>
+                            <option value="3">المرحلة الثالثة</option>
+                            <option value="4">المرحلة الرابعة</option>
+                          </select>
                           <input value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none col-span-2" placeholder="الهاتف" />
                         </div>
                         <div className="flex gap-2">
@@ -675,7 +756,7 @@ export default function StudentsPage() {
                   onChange={e => setPhone(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs font-black text-slate-400 uppercase tracking-wider pr-1">الكلية</label>
                   <select
@@ -697,6 +778,20 @@ export default function StudentsPage() {
                   >
                     <option value="">-- اختر القسم --</option>
                     {allDepartments.filter(d => String(d.faculty_id) === selectedFacultyId).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-black text-slate-400 uppercase tracking-wider pr-1">المرحلة</label>
+                  <select
+                    className="w-full p-3 md:p-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-sm text-slate-700"
+                    value={stage}
+                    onChange={e => setStage(e.target.value)}
+                  >
+                    <option value="">-- اختر المرحلة --</option>
+                    <option value="1">المرحلة الأولى</option>
+                    <option value="2">المرحلة الثانية</option>
+                    <option value="3">المرحلة الثالثة</option>
+                    <option value="4">المرحلة الرابعة</option>
                   </select>
                 </div>
               </div>

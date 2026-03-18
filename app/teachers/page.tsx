@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 
 // تعريف نوع بيانات الأستاذ
 type Teacher = {
@@ -13,6 +14,7 @@ type Teacher = {
 };
 
 export default function TeachersPage() {
+  const router = useRouter();
   // ---------------------------------------------------------
   // الحالات (States)
   // ---------------------------------------------------------
@@ -90,14 +92,14 @@ export default function TeachersPage() {
     e.preventDefault();
     setFormError(null);
     setFormLoading(true);
-    
+
     try {
       const res = await fetch('/api/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, phone, department, password })
       });
-      
+
       if (res.ok) {
         setName(""); setEmail(""); setPhone(""); setDepartment(""); setPassword(""); setSelectedFacultyId("");
         setShowForm(false);
@@ -112,6 +114,18 @@ export default function TeachersPage() {
     } finally {
       setFormLoading(false);
     }
+  };
+
+  const handleOpenForm = () => {
+    setShowForm(true);
+    // توليد بريد إلكتروني تلقائي بناءً على عدد المدرسين
+    const nextNumber = teachers.length + 1;
+    setEmail(`teacher${nextNumber}@almaqal.edu.iq`);
+    setName("");
+    setPhone("");
+    setDepartment("");
+    setPassword("");
+    setSelectedFacultyId("");
   };
 
   const promptDelete = (id: number) => {
@@ -192,16 +206,37 @@ export default function TeachersPage() {
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-6 md:mb-8 gap-4 md:gap-6 animate-fade-in-up">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#059669] to-[#c8a44e] rounded-full"></div>
-              <p className="text-[10px] md:text-xs font-bold text-[#059669]/60 uppercase tracking-widest">لوحة التحكم</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.back()}
+              className="p-2 rounded-xl hover:bg-white transition-all hover:shadow-md"
+              title="رجوع"
+            >
+              <svg
+                className="w-6 h-6 text-[#0f2744]"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#059669] to-[#c8a44e] rounded-full"></div>
+                <p className="text-[10px] md:text-xs font-bold text-[#059669]/60 uppercase tracking-widest">لوحة التحكم</p>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">أعضاء هيئة التدريس</h1>
+              <p className="text-slate-500 text-xs md:text-sm mt-1">إدارة بيانات الأساتذة والمحاضرين في الجامعة</p>
             </div>
-            <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">أعضاء هيئة التدريس</h1>
-            <p className="text-slate-500 text-xs md:text-sm mt-1">إدارة بيانات الأساتذة والمحاضرين في الجامعة</p>
           </div>
-          <button 
-            onClick={() => setShowForm(true)}
+          <button
+            onClick={handleOpenForm}
             className="group flex items-center justify-center gap-2 md:gap-3 bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] text-white px-4 md:px-7 py-2.5 md:py-3.5 rounded-xl text-sm md:text-base font-bold shadow-lg shadow-[#0f2744]/15 transition-all active:scale-[0.98] w-full md:w-auto"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 group-hover:rotate-90 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor">

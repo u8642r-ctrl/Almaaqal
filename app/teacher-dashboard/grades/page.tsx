@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function TeacherGradesPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
   const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
@@ -116,11 +118,23 @@ export default function TeacherGradesPage() {
     <div className="min-h-screen bg-[#f0f4f8] bg-pattern p-3 sm:p-4 md:p-8 font-sans overflow-x-hidden" dir="rtl">
       <div className="w-full max-w-6xl mx-auto">
         <div className="mb-6 md:mb-8 animate-fade-in-up">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#059669] to-[#c8a44e] rounded-full"></div>
-            <p className="text-[10px] md:text-xs font-bold text-[#059669]/60 uppercase tracking-widest">بوابة التدريسي</p>
+          <div className="flex items-center gap-4 mb-3">
+            <button
+              onClick={() => router.back()}
+              className="w-10 h-10 rounded-xl bg-white shadow flex items-center justify-center hover:bg-slate-50 transition-all"
+            >
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#059669] to-[#c8a44e] rounded-full"></div>
+                <p className="text-[10px] md:text-xs font-bold text-[#059669]/60 uppercase tracking-widest">بوابة التدريسي</p>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">إدارة الدرجات</h1>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">إدارة الدرجات</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-1">رصد وتعديل درجات الطلاب</p>
         </div>
 
@@ -145,7 +159,6 @@ export default function TeacherGradesPage() {
                   }`}
                 >
                   <h3 className="font-bold text-slate-800">{course.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1">{course.code}</p>
                   <p className="text-xs font-bold text-emerald-600 mt-2">
                     {course.student_count} طالب
                   </p>
@@ -194,7 +207,19 @@ export default function TeacherGradesPage() {
                       return (
                         <tr key={student.id} className="hover:bg-slate-50/80 transition-all">
                           <td className="p-6 text-slate-400 text-sm font-bold">{index + 1}</td>
-                          <td className="p-6 font-bold text-slate-800">{student.student_name}</td>
+                          <td className="p-6 font-bold text-slate-800">
+                            <div className="flex items-center gap-2">
+                              <span>{student.student_name}</span>
+                              {student.is_carried_over && (
+                                <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-100 text-amber-700 whitespace-nowrap">
+                                  تحميل
+                                </span>
+                              )}
+                            </div>
+                            {student.is_carried_over && (
+                              <p className="text-xs text-amber-600 mt-1">من المرحلة {student.original_stage}</p>
+                            )}
+                          </td>
                           <td className="p-6 text-slate-500 text-sm">{student.student_email}</td>
                           <td className="p-6">
                             <input
@@ -243,6 +268,14 @@ export default function TeacherGradesPage() {
                           <div className="flex-1 min-w-0">
                             <span className="text-xs text-slate-400 font-bold">#{index + 1}</span>
                             <p className="font-bold text-slate-800 text-sm">{student.student_name}</p>
+                            {student.is_carried_over && (
+                              <>
+                                <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-amber-100 text-amber-700 inline-block mt-1">
+                                  تحميل
+                                </span>
+                                <p className="text-xs text-amber-600 mt-0.5">من المرحلة {student.original_stage}</p>
+                              </>
+                            )}
                             <p className="text-slate-400 text-[11px] truncate">{student.student_email}</p>
                           </div>
                         </div>

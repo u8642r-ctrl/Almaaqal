@@ -11,25 +11,32 @@ export async function GET() {
 
   try {
     // جلب سجل الأستاذ بالإيميل
-    const teacherResult = await pool.query(
-      "SELECT id FROM teachers WHERE email = $1",
+    let teacherResult = await pool.query(
+      "SELECT id, department FROM teachers WHERE email = $1",
       [session.user.email]
     );
+
+    // إذا لم يوجد سجل أستاذ، ننشئه تلقائياً حتى تعمل واجهات التدريسي
+    if (teacherResult.rows.length === 0) {
+      const insertResult = await pool.query(
+        "INSERT INTO teachers (name, email) VALUES ($1, $2) ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name RETURNING id, department",
+        [session.user.name || "تدريسي", session.user.email]
+      );
+      teacherResult = insertResult;
+    }
 
     if (teacherResult.rows.length === 0) {
       return NextResponse.json([]);
     }
 
     const teacherId = teacherResult.rows[0].id;
+    const teacherDepartment = teacherResult.rows[0].department || null;
 
-    // جلب المواد التي يدرّسها الأستاذ مع عدد الطلاب المسجلين
+    // جلب المواد المسندة للتدريسي فقط
     const result = await pool.query(
-      `SELECT c.id, c.name, c.code, c.description, c.created_at,
-              COUNT(e.id) as student_count
+      `SELECT c.id, c.name, c.code, c.description, c.created_at
        FROM courses c
-       LEFT JOIN enrollments e ON c.id = e.course_id
        WHERE c.teacher_id = $1
-       GROUP BY c.id
        ORDER BY c.name`,
       [teacherId]
     );

@@ -146,10 +146,15 @@ export default function StudentDashboardPage() {
         {/* Profile Card */}
         {profile && (
           <div className="card-pro p-4 md:p-6 mb-6 animate-fade-in-up stagger-4">
-            <h2 className="text-base font-black text-[#0f2744] mb-4 flex items-center gap-2">
-              <svg className="w-5 h-5 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-              معلوماتي الشخصية
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-black text-[#0f2744] flex items-center gap-2">
+                <svg className="w-5 h-5 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                معلوماتي الشخصية
+              </h2>
+              <Link href="/student-dashboard/edit-profile" className="px-4 py-2 bg-[#2563eb]/10 text-[#2563eb] rounded-lg font-bold text-sm hover:bg-[#2563eb] hover:text-white transition-all">
+                تعديل
+              </Link>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="bg-[#f0f4f8] p-4 rounded-xl">
                 <span className="text-slate-400 font-semibold text-xs">الاسم الكامل</span>
@@ -199,7 +204,19 @@ export default function StudentDashboardPage() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          <Link href="/student-dashboard/learning-content" className="card-pro p-6 group animate-fade-in-up stagger-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#0f2744] group-hover:text-[#2563eb] transition-colors">المحاضرات والواجبات</h2>
+                <p className="text-slate-400 text-sm mt-1">المحتوى المرسل من أساتذتك</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-[#2563eb]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 8h10M7 12h6m-8 8h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+            </div>
+          </Link>
+
           <Link href="/student-dashboard/my-courses" className="card-pro p-6 group animate-fade-in-up stagger-4">
             <div className="flex items-center justify-between">
               <div>
@@ -220,6 +237,18 @@ export default function StudentDashboardPage() {
               </div>
               <div className="w-12 h-12 rounded-xl bg-[#059669]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-6 h-6 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/student-dashboard/academic-view" className="card-pro p-6 group animate-fade-in-up stagger-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#0f2744] group-hover:text-[#c8a44e] transition-colors">السجل الأكاديمي</h2>
+                <p className="text-slate-400 text-sm mt-1">تصفح المراحل والكورسات والمواد</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-[#c8a44e]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
               </div>
             </div>
           </Link>

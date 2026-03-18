@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
   try {
     let query = `
       SELECT e.id, e.student_id, e.course_id, e.enrolled_at,
+             e.is_carried_over, e.original_stage, e.status,
              s.name as student_name, s.email as student_email,
-             c.name as course_name, c.code as course_code
+             c.name as course_name, c.code as course_code, c.stage as course_stage
       FROM enrollments e
       JOIN students s ON e.student_id = s.id
       JOIN courses c ON e.course_id = c.id
@@ -45,7 +46,44 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   try {
-    const { student_id, course_id } = await req.json();
+    const { student_id, course_id, auto_enroll } = await req.json();
+
+    if (auto_enroll) {
+      // تسجيل تلقائي: تسجيل الطالب في جميع المواد الخاصة بمرحلته
+      const studentResult = await pool.query('SELECT stage FROM students WHERE id = $1', [student_id]);
+      if (studentResult.rows.length === 0) {
+        return NextResponse.json({ error: 'الطالب غير موجود' }, { status: 404 });
+      }
+
+      const studentStage = studentResult.rows[0].stage;
+      if (!studentStage) {
+        return NextResponse.json({ error: 'يجب تحديد مرحلة الطالب أولاً' }, { status: 400 });
+      }
+
+      // جلب جميع المواد الخاصة بهذه المرحلة
+      const coursesResult = await pool.query(
+        'SELECT id FROM courses WHERE stage = $1',
+        [studentStage]
+      );
+
+      // تسجيل الطالب في جميع المواد (تجاهل التكرارات)
+      let enrolledCount = 0;
+      for (const course of coursesResult.rows) {
+        try {
+          await pool.query(
+            'INSERT INTO enrollments (student_id, course_id) VALUES ($1, $2) ON CONFLICT (student_id, course_id) DO NOTHING',
+            [student_id, course.id]
+          );
+          enrolledCount++;
+        } catch (e) {
+          // تجاهل الأخطاء (تكرار التسجيل)
+        }
+      }
+
+      return NextResponse.json({ success: true, message: `تم تسجيل الطالب في ${enrolledCount} مادة` }, { status: 201 });
+    }
+
+    // تسجيل يدوي: تسجيل الطالب في مادة واحدة
     if (!student_id || !course_id) {
       return NextResponse.json({ error: "معرّف الطالب والمادة مطلوبان" }, { status: 400 });
     }
@@ -60,6 +98,34 @@ export async function POST(req: NextRequest) {
     if (err.code === "23505") {
       return NextResponse.json({ error: "الطالب مسجّل في هذه المادة مسبقاً" }, { status: 400 });
     }
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
+// تحديث التسجيل (مثل تحديث حالة التحميل)
+export async function PUT(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "معرّف التسجيل مطلوب" }, { status: 400 });
+
+  try {
+    const { is_carried_over, original_stage, status } = await req.json();
+
+    const result = await pool.query(
+      `UPDATE enrollments
+       SET is_carried_over = COALESCE($1, is_carried_over),
+           original_stage = COALESCE($2, original_stage),
+           status = COALESCE($3, status)
+       WHERE id = $4
+       RETURNING *`,
+      [is_carried_over !== undefined ? is_carried_over : null, original_stage, status, id]
+    );
+
+    return NextResponse.json(result.rows[0]);
+  } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

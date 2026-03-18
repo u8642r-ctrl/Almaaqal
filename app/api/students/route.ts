@@ -25,11 +25,29 @@ export async function PUT(req: NextRequest) {
   const id = searchParams.get('id');
   if (!id) return new Response(JSON.stringify({ error: 'رقم الطالب مطلوب' }), { status: 400 });
   try {
-    const { name, email } = await req.json();
+    const { name, email, phone, department, stage } = await req.json();
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'الاسم والبريد الإلكتروني مطلوبان' }), { status: 400 });
     }
-    await pool.query('UPDATE students SET name = $1, email = $2 WHERE id = $3', [name, email, id]);
+
+    // جلب البريد القديم
+    const oldStudent = await pool.query('SELECT email FROM students WHERE id = $1', [id]);
+    const oldEmail = oldStudent.rows[0]?.email;
+
+    // تحديث جدول الطلاب
+    await pool.query(
+      'UPDATE students SET name = $1, email = $2, phone = $3, department = $4, stage = $5 WHERE id = $6',
+      [name, email, phone || null, department || null, stage || null, id]
+    );
+
+    // تحديث جدول المستخدمين إذا تغير البريد الإلكتروني
+    if (oldEmail && oldEmail !== email) {
+      await pool.query(
+        'UPDATE users SET email = $1, name = $2 WHERE email = $3 AND role = $4',
+        [email, name, oldEmail, 'student']
+      );
+    }
+
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err: any) {
     let msg = 'DB error';
@@ -43,7 +61,7 @@ import pool from '../../../lib/db';
 
 export async function GET(req: NextRequest) {
   try {
-    const result = await pool.query('SELECT id, name, email, phone, department, created_at FROM students ORDER BY id DESC');
+    const result = await pool.query('SELECT id, name, email, phone, department, stage, created_at FROM students ORDER BY id DESC');
     return new Response(JSON.stringify(result.rows), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -56,15 +74,20 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, email, password, phone, department } = await req.json();
+    const { name, email, password, phone, department, stage } = await req.json();
     if (!name || !email) {
       return new Response(JSON.stringify({ error: 'الاسم والبريد الإلكتروني مطلوبان' }), { status: 400 });
     }
     // إنشاء سجل الطالب
     const result = await pool.query(
-      'INSERT INTO students (name, email, phone, department) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, department, created_at',
-      [name, email, phone || null, department || null]
+      'INSERT INTO students (name, email, phone, department, stage) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, phone, department, stage, created_at',
+      [name, email, phone || null, department || null, stage || null]
     );
+
+    const studentId = result.rows[0].id;
+    const studentStage = result.rows[0].stage;
+    const studentDepartment = result.rows[0].department;
+
     // إنشاء حساب تسجيل الدخول إذا تم توفير كلمة المرور
     if (password) {
       await pool.query(
@@ -72,6 +95,37 @@ export async function POST(req: NextRequest) {
         [email, password, name, 'student']
       );
     }
+
+    // التسجيل التلقائي في كورسات المرحلة والقسم المناسبة
+    try {
+      // جلب الكورسات المطابقة للمرحلة والقسم
+      let coursesQuery = 'SELECT c.id FROM courses c LEFT JOIN departments d ON c.department_id = d.id WHERE 1=1';
+      const params: any[] = [];
+
+      // مطابقة المرحلة إذا كانت محددة
+      if (studentStage) {
+        params.push(studentStage);
+        coursesQuery += ` AND (c.stage = $${params.length} OR c.stage IS NULL)`;
+      }
+
+      // مطابقة القسم إذا كان محدد
+      if (studentDepartment) {
+        params.push(studentDepartment);
+        coursesQuery += ` AND (d.name = $${params.length} OR c.department_id IS NULL)`;
+      }
+
+      const coursesResult = await pool.query(coursesQuery, params);
+      for (const course of coursesResult.rows) {
+        await pool.query(
+          'INSERT INTO enrollments (student_id, course_id) VALUES ($1, $2) ON CONFLICT (student_id, course_id) DO NOTHING',
+          [studentId, course.id]
+        );
+      }
+    } catch (enrollErr) {
+      console.log('تحذير: فشل التسجيل التلقائي في الكورسات:', enrollErr);
+      // نكمل حتى لو فشل التسجيل
+    }
+
     return new Response(JSON.stringify(result.rows[0]), {
       status: 201,
       headers: { 'Content-Type': 'application/json' },

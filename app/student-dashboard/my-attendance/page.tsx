@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type AttendanceRecord = {
   id: number;
@@ -21,6 +22,7 @@ type CourseSummary = {
 };
 
 export default function MyAttendancePage() {
+  const router = useRouter();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -83,11 +85,23 @@ export default function MyAttendancePage() {
       <div className="w-full max-w-5xl mx-auto space-y-4 md:space-y-6">
         {/* Header */}
         <div className="animate-fade-in-up">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
-            <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">لوحة الطالب</p>
+          <div className="flex items-center gap-4 mb-3">
+            <button
+              onClick={() => router.back()}
+              className="w-10 h-10 rounded-xl bg-white shadow flex items-center justify-center hover:bg-slate-50 transition-all"
+            >
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
+                <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">لوحة الطالب</p>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">سجل الحضور</h1>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">سجل الحضور</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-1">متابعة حضورك وغيابك في المواد الدراسية</p>
         </div>
 

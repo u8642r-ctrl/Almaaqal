@@ -22,10 +22,13 @@ export async function GET() {
     const studentId = studentResult.rows[0].id;
 
     const result = await pool.query(
-      `SELECT g.id, g.grade, g.semester, g.created_at,
-              c.name as course_name, c.code as course_code
+      `SELECT g.id, g.grade, g.semester, g.pass_type, g.created_at,
+              c.name as course_name, c.code as course_code, c.stage as course_stage, c.term as course_term,
+              COALESCE(e.is_carried_over, FALSE) as is_carried_over,
+              COALESCE(e.original_stage, c.stage) as original_stage
        FROM grades g
        JOIN courses c ON g.course_id = c.id
+       LEFT JOIN enrollments e ON e.student_id = $1 AND e.course_id = c.id
        WHERE g.student_id = $1
        ORDER BY g.created_at DESC`,
       [studentId]

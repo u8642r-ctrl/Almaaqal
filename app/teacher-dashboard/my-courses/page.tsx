@@ -58,24 +58,9 @@ export default function TeacherMyCoursesPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-800">{course.name}</h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                          {course.code}
-                        </span>
-                        {course.description && (
-                          <span className="text-xs text-slate-400">{course.description}</span>
-                        )}
-                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 mr-auto sm:mr-0 flex-shrink-0">
-                    <div className="text-center">
-                      <span className="text-xl md:text-2xl font-black text-slate-900">
-                        {course.student_count}
-                      </span>
-                      <p className="text-[10px] text-slate-400 font-bold">طالب مسجّل</p>
-                    </div>
-                  </div>
+
                 </div>
               ))}
             </div>

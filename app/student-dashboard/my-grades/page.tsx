@@ -2,8 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function MyGradesPage() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [grades, setGrades] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,11 +40,23 @@ export default function MyGradesPage() {
     <div className="min-h-screen bg-[#f0f4f8] bg-pattern p-3 sm:p-4 md:p-8 font-sans overflow-x-hidden" dir="rtl">
       <div className="w-full max-w-6xl mx-auto">
         <div className="mb-6 md:mb-8 animate-fade-in-up">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
-            <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">بوابة الطالب</p>
+          <div className="flex items-center gap-4 mb-3">
+            <button
+              onClick={() => router.back()}
+              className="w-10 h-10 rounded-xl bg-white shadow flex items-center justify-center hover:bg-slate-50 transition-all"
+            >
+              <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
+                <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">بوابة الطالب</p>
+              </div>
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">درجاتي</h1>
+            </div>
           </div>
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">درجاتي</h1>
           <p className="text-slate-500 text-xs md:text-sm mt-1">سجل الدرجات والتقديرات</p>
         </div>
 
@@ -93,13 +107,34 @@ export default function MyGradesPage() {
                     return (
                       <tr key={g.id} className="hover:bg-slate-50/80 transition-all">
                         <td className="p-6 text-slate-400 text-sm font-bold">{index + 1}</td>
-                        <td className="p-6 font-bold text-slate-800">{g.course_name}</td>
+                        <td className="p-6 font-bold text-slate-800">
+                          <div className="flex items-center gap-2">
+                            <span>{g.course_name}</span>
+                            {g.is_carried_over && (
+                              <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-amber-100 text-amber-700 whitespace-nowrap">
+                                تحميل
+                              </span>
+                            )}
+                          </div>
+                          {g.is_carried_over && (
+                            <p className="text-xs text-amber-600 mt-1">
+                              من المرحلة {g.original_stage}
+                            </p>
+                          )}
+                        </td>
                         <td className="p-6">
                           <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
                             {g.course_code}
                           </span>
                         </td>
-                        <td className="p-6 text-slate-500 text-sm">{g.semester || "--"}</td>
+                        <td className="p-6 text-slate-500 text-sm">
+                          {g.pass_type === 'second_round' && (
+                            <span className="inline-block text-xs font-bold px-2 py-1 rounded bg-blue-100 text-blue-700 mr-1">
+                              دور ثاني
+                            </span>
+                          )}
+                          {g.semester || "--"}
+                        </td>
                         <td className="p-6 text-center">
                           <span className="text-2xl font-black text-slate-900">
                             {g.grade != null ? g.grade : "--"}
@@ -127,12 +162,23 @@ export default function MyGradesPage() {
                     <div key={g.id} className="p-4 hover:bg-slate-50/80 transition-all">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <span className="text-xs text-slate-400 font-bold">#{index + 1}</span>
                             <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{g.course_code}</span>
+                            {g.is_carried_over && (
+                              <span className="text-[10px] font-black px-2 py-0.5 rounded bg-amber-100 text-amber-700">
+                                تحميل
+                              </span>
+                            )}
                           </div>
                           <p className="font-bold text-slate-800 text-sm">{g.course_name}</p>
+                          {g.is_carried_over && (
+                            <p className="text-xs text-amber-600 mt-0.5">من المرحلة {g.original_stage}</p>
+                          )}
                           {g.semester && <p className="text-slate-400 text-[11px] mt-1">الفصل: {g.semester}</p>}
+                          {g.pass_type === 'second_round' && (
+                            <p className="text-xs font-bold text-blue-600 mt-1">دور ثاني</p>
+                          )}
                         </div>
                         <div className="text-center flex-shrink-0">
                           <span className="text-xl font-black text-slate-900 block">

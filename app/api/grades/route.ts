@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   try {
     let query = `
-      SELECT g.id, g.student_id, g.course_id, g.grade, g.semester, g.created_at,
+      SELECT g.id, g.student_id, g.course_id, g.grade, g.semester, g.pass_type, g.created_at,
              s.name as student_name, s.email as student_email,
              c.name as course_name, c.code as course_code
       FROM grades g
@@ -51,14 +51,14 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
 
   try {
-    const { student_id, course_id, grade, semester } = await req.json();
+    const { student_id, course_id, grade, semester, pass_type } = await req.json();
     if (!student_id || !course_id || grade === undefined) {
       return NextResponse.json({ error: "معرّف الطالب والمادة والدرجة مطلوبة" }, { status: 400 });
     }
 
     const result = await pool.query(
-      "INSERT INTO grades (student_id, course_id, grade, semester) VALUES ($1, $2, $3, $4) RETURNING *",
-      [student_id, course_id, grade, semester || "2025-2026"]
+      "INSERT INTO grades (student_id, course_id, grade, semester, pass_type) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [student_id, course_id, grade, semester || "2025-2026", pass_type || "first_round"]
     );
 
     return NextResponse.json(result.rows[0], { status: 201 });
@@ -77,8 +77,8 @@ export async function PUT(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "معرّف الدرجة مطلوب" }, { status: 400 });
 
   try {
-    const { grade } = await req.json();
-    await pool.query("UPDATE grades SET grade = $1 WHERE id = $2", [grade, id]);
+    const { grade, pass_type } = await req.json();
+    await pool.query("UPDATE grades SET grade = $1, pass_type = COALESCE($2, pass_type) WHERE id = $3", [grade, pass_type || null, id]);
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
