@@ -169,6 +169,23 @@ export async function initDatabase() {
       ON CONFLICT (email) DO NOTHING
     `);
 
+    // إدخال مواد دراسية للأستاذ الافتراضي
+    const teacherResult = await pool.query(
+      "SELECT id FROM teachers WHERE email = $1",
+      ['teacher@almaqal.edu.iq']
+    );
+
+    if (teacherResult.rows.length > 0) {
+      const teacherId = teacherResult.rows[0].id;
+      await pool.query(`
+        INSERT INTO courses (name, code, description, teacher_id) VALUES
+          ('برمجة الويب', 'CS101', 'مقرر أساسي في تطوير تطبيقات الويب', $1),
+          ('قواعد البيانات', 'CS102', 'دراسة أنظمة إدارة قواعد البيانات', $1),
+          ('هياكل البيانات', 'CS103', 'مقرر متقدم في تنظيم البيانات', $1)
+        ON CONFLICT (code) DO NOTHING
+      `, [teacherId]);
+    }
+
     dbInitialized = true;
     console.log("✅ Database initialized successfully");
   } catch (err) {

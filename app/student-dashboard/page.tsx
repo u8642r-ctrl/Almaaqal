@@ -199,7 +199,7 @@ export default function StudentDashboardPage() {
         )}
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           <Link href="/student-dashboard/my-courses" className="card-pro p-6 group animate-fade-in-up stagger-4">
             <div className="flex items-center justify-between">
               <div>
@@ -220,6 +220,18 @@ export default function StudentDashboardPage() {
               </div>
               <div className="w-12 h-12 rounded-xl bg-[#059669]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-6 h-6 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/student-dashboard/academic-view" className="card-pro p-6 group animate-fade-in-up stagger-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#0f2744] group-hover:text-[#2563eb] transition-colors">السجل الأكاديمي</h2>
+                <p className="text-slate-400 text-sm mt-1">عرض كامل السجل الأكاديمي</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-[#c8a44e]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               </div>
             </div>
           </Link>

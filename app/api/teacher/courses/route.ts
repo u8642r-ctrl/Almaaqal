@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../lib/auth";
-import pool from "../../../../lib/db";
+import pool, { initDatabase } from "../../../../lib/db";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -9,14 +9,34 @@ export async function GET() {
     return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
   }
 
+  const email = session.user.email;
+  const name = session.user.name || "تدريسي";
+
   try {
-    // جلب سجل الأستاذ بالإيميل
-    const teacherResult = await pool.query(
+    // تأكد من تهيئة قاعدة البيانات (ووجود الأستاذ الافتراضي لو لم يكن موجوداً)
+    await initDatabase();
+
+    // محاولة جلب الأستاذ بحسب الإيميل
+    let teacherResult = await pool.query(
       "SELECT id FROM teachers WHERE email = $1",
-      [session.user.email]
+      [email]
     );
 
+    // في حال عدم العثور، نحاول إنشاء سجل للأستاذ بهذا الإيميل ثم نعيد قراءته
     if (teacherResult.rows.length === 0) {
+      await pool.query(
+        "INSERT INTO teachers (name, email) VALUES ($1, $2) ON CONFLICT (email) DO NOTHING",
+        [name, email]
+      );
+
+      teacherResult = await pool.query(
+        "SELECT id FROM teachers WHERE email = $1",
+        [email]
+      );
+    }
+
+    if (teacherResult.rows.length === 0) {
+      // لا يوجد أستاذ مرتبط بهذا الإيميل حتى بعد المحاولة، نعيد قائمة فارغة
       return NextResponse.json([]);
     }
 
