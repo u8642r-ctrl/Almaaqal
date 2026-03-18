@@ -444,9 +444,7 @@ export default function CoursesPage() {
                         {editId === course.id ? (
                           <input value={editCode} onChange={e => setEditCode(e.target.value)} className="w-24 px-3 py-2 border rounded-xl text-sm font-mono" placeholder="CS101" />
                         ) : (
-                          <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg text-xs font-bold font-mono">
-                            {course.code}
-                          </span>
+                          <span className="text-xs text-slate-400">—</span>
                         )}
                       </td>
                       <td className="p-6">
@@ -537,7 +535,6 @@ export default function CoursesPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">{course.code}</span>
                               <span className="text-slate-800 font-bold text-sm">{course.name}</span>
                             </div>
                             <p className="text-slate-500 text-[11px] mt-1">الأستاذ: {course.teacher_name || teachers.find(t => t.id === course.teacher_id)?.name || '-'}</p>

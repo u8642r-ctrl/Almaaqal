@@ -344,7 +344,7 @@ export default function TeacherAttendancePage() {
               >
                 <option value="">-- اختر مادة --</option>
                 {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>

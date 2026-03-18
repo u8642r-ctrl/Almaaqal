@@ -136,9 +136,6 @@ export default function MyAttendancePage() {
                     >
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs font-bold font-mono">
-                            {cs.course_code}
-                          </span>
                           <p className="font-bold text-slate-800 mt-2">{cs.course_name}</p>
                         </div>
                         <span
@@ -208,9 +205,6 @@ export default function MyAttendancePage() {
                       <tr key={record.id} className="hover:bg-slate-50/80 transition-all">
                         <td className="p-6 text-slate-400 font-bold">{idx + 1}</td>
                         <td className="p-6">
-                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-lg text-xs font-bold font-mono mr-2">
-                            {record.course_code}
-                          </span>
                           <span className="font-bold text-slate-800">{record.course_name}</span>
                         </td>
                         <td className="p-6 text-sm text-slate-600 font-mono">
@@ -239,9 +233,6 @@ export default function MyAttendancePage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs text-slate-400 font-bold">#{idx + 1}</span>
-                            <span className="bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold font-mono">
-                              {record.course_code}
-                            </span>
                           </div>
                           <p className="font-bold text-slate-800 text-sm">{record.course_name}</p>
                           <p className="text-slate-400 text-[11px] mt-1 font-mono">

@@ -58,14 +58,9 @@ export default function MyCoursesPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-800">{course.name}</h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                          {course.code}
-                        </span>
-                        {course.description && (
-                          <span className="text-xs text-slate-400">{course.description}</span>
-                        )}
-                      </div>
+                      {course.description && (
+                        <span className="text-xs text-slate-400 mt-1">{course.description}</span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right sm:text-left mr-auto sm:mr-0 flex-shrink-0">

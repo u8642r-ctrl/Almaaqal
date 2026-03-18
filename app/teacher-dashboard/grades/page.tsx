@@ -145,7 +145,6 @@ export default function TeacherGradesPage() {
                   }`}
                 >
                   <h3 className="font-bold text-slate-800">{course.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1">{course.code}</p>
                   <p className="text-xs font-bold text-emerald-600 mt-2">
                     {course.student_count} طالب
                   </p>

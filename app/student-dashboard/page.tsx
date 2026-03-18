@@ -200,6 +200,18 @@ export default function StudentDashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+          <Link href="/student-dashboard/learning-content" className="card-pro p-6 group animate-fade-in-up stagger-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#0f2744] group-hover:text-[#2563eb] transition-colors">المحاضرات والواجبات</h2>
+                <p className="text-slate-400 text-sm mt-1">عرض ما ينشره الأساتذة مع المرفقات</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-[#2563eb]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-6 h-6 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 8h10M7 12h10M7 16h6M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
+              </div>
+            </div>
+          </Link>
+
           <Link href="/student-dashboard/my-courses" className="card-pro p-6 group animate-fade-in-up stagger-4">
             <div className="flex items-center justify-between">
               <div>

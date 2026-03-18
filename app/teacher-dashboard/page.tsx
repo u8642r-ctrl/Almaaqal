@@ -80,7 +80,6 @@ export default function TeacherDashboardPage() {
                 <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br from-[#2563eb]/20 to-[#2563eb]/5 flex items-center justify-center shadow-sm">
                   <svg className="w-4 h-4 md:w-6 md:h-6 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>
                 </div>
-                <span className="text-[8px] md:text-[10px] font-bold bg-[#2563eb]/10 text-[#2563eb] px-1.5 md:px-2.5 py-0.5 md:py-1 rounded-lg">طالب</span>
               </div>
               <h3 className="text-2xl md:text-4xl font-black text-[#0f2744] tabular-nums">{totalStudents}</h3>
               <p className="text-slate-400 font-semibold text-[11px] md:text-sm mt-1">إجمالي طلابي</p>
@@ -157,14 +156,8 @@ export default function TeacherDashboardPage() {
                     <div className="w-9 h-9 rounded-xl bg-[#059669]/10 flex items-center justify-center">
                       <svg className="w-4 h-4 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
                     </div>
-                    <div>
-                      <span className="font-bold text-[#0f2744] text-sm">{c.name}</span>
-                      <span className="text-slate-400 text-xs mr-2">({c.code})</span>
-                    </div>
+                    <span className="font-bold text-[#0f2744] text-sm">{c.name}</span>
                   </div>
-                  <span className="text-[10px] font-bold text-[#059669] bg-[#059669]/10 px-2.5 py-1 rounded-lg">
-                    {c.student_count} طالب
-                  </span>
                 </div>
               ))}
             </div>
@@ -173,6 +166,30 @@ export default function TeacherDashboardPage() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
+          <Link href="/teacher-dashboard/content" className="card-pro p-4 md:p-6 group animate-fade-in-up stagger-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#0f2744] group-hover:text-[#059669] transition-colors">إرسال المحاضرات والواجبات</h2>
+                <p className="text-slate-400 text-xs md:text-sm mt-1">نشر المحتوى للطلاب حسب المادة</p>
+              </div>
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-[#059669]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-4 h-4 md:w-6 md:h-6 text-[#059669]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7 8h10M7 12h6m-8 8h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+            </div>
+          </Link>
+
+          <Link href="/teacher-dashboard/homework-grading" className="card-pro p-4 md:p-6 group animate-fade-in-up stagger-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-black text-[#0f2744] group-hover:text-[#059669] transition-colors">تصحيح الواجبات</h2>
+                <p className="text-slate-400 text-xs md:text-sm mt-1">رصد درجات الواجبات وإرسالها</p>
+              </div>
+              <div className="w-9 h-9 md:w-12 md:h-12 rounded-xl bg-[#c8a44e]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-4 h-4 md:w-6 md:h-6 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" /></svg>
+              </div>
+            </div>
+          </Link>
+
           <Link href="/teacher-dashboard/my-courses" className="card-pro p-4 md:p-6 group animate-fade-in-up stagger-5">
             <div className="flex items-center justify-between">
               <div>

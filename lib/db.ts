@@ -105,6 +105,37 @@ export async function initDatabase() {
       )
     `);
 
+    // جدول المحتوى التعليمي (محاضرات/واجبات)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS course_contents (
+        id SERIAL PRIMARY KEY,
+        course_id INTEGER REFERENCES courses(id) ON DELETE CASCADE,
+        teacher_id INTEGER REFERENCES teachers(id) ON DELETE CASCADE,
+        content_type VARCHAR(20) NOT NULL,
+        title VARCHAR(200) NOT NULL,
+        description TEXT,
+        due_date TIMESTAMP NULL,
+        file_name VARCHAR(255),
+        file_data TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // جدول تصحيح الواجبات
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS homework_grades (
+        id SERIAL PRIMARY KEY,
+        content_id INTEGER REFERENCES course_contents(id) ON DELETE CASCADE,
+        student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+        submission_text TEXT,
+        submitted_at TIMESTAMP,
+        grade DECIMAL(5,2),
+        feedback TEXT,
+        graded_at TIMESTAMP,
+        UNIQUE(content_id, student_id)
+      )
+    `);
+
     // جدول الكليات
     await pool.query(`
       CREATE TABLE IF NOT EXISTS faculties (
@@ -136,6 +167,8 @@ export async function initDatabase() {
       "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
       "ALTER TABLE courses ADD COLUMN IF NOT EXISTS description TEXT",
       "ALTER TABLE courses ADD COLUMN IF NOT EXISTS teacher_id INTEGER",
+      "ALTER TABLE course_contents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
+      "ALTER TABLE course_contents ADD COLUMN IF NOT EXISTS file_data TEXT",
     ];
     for (const q of alterQueries) {
       try { await pool.query(q); } catch { /* العمود موجود مسبقاً */ }

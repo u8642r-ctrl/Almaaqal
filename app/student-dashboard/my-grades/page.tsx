@@ -94,11 +94,7 @@ export default function MyGradesPage() {
                       <tr key={g.id} className="hover:bg-slate-50/80 transition-all">
                         <td className="p-6 text-slate-400 text-sm font-bold">{index + 1}</td>
                         <td className="p-6 font-bold text-slate-800">{g.course_name}</td>
-                        <td className="p-6">
-                          <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                            {g.course_code}
-                          </span>
-                        </td>
+                        <td className="p-6 text-slate-400 text-xs">—</td>
                         <td className="p-6 text-slate-500 text-sm">{g.semester || "--"}</td>
                         <td className="p-6 text-center">
                           <span className="text-2xl font-black text-slate-900">
@@ -129,7 +125,6 @@ export default function MyGradesPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs text-slate-400 font-bold">#{index + 1}</span>
-                            <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{g.course_code}</span>
                           </div>
                           <p className="font-bold text-slate-800 text-sm">{g.course_name}</p>
                           {g.semester && <p className="text-slate-400 text-[11px] mt-1">الفصل: {g.semester}</p>}
