@@ -31,56 +31,44 @@ export default function TeacherMyCoursesPage() {
           <p className="text-slate-500 text-xs md:text-sm mt-1">المواد المسندة إليّ وإحصائيات الطلاب</p>
         </div>
 
-        <div className="card-pro overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-32">
-              <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
-              <p className="text-slate-400 font-bold mt-6">جاري جلب المواد...</p>
-            </div>
-          ) : courses.length === 0 ? (
-            <div className="py-32 text-center">
-              <span className="text-6xl mb-4 block opacity-30">📚</span>
-              <p className="text-slate-400 font-bold text-lg">لا توجد مواد مسندة إليك حالياً</p>
-              <p className="text-slate-300 text-sm mt-2">
-                تواصل مع إدارة القسم لإسناد المواد الدراسية
-              </p>
-            </div>
-          ) : (
-            <div className="divide-y divide-slate-50">
-              {courses.map((course: any, index: number) => (
-                <div
-                  key={course.id}
-                  className="p-4 md:p-6 hover:bg-slate-50/80 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                >
-                  <div className="flex items-center gap-3 md:gap-6">
-                    <div className="w-9 h-9 md:w-12 md:h-12 bg-emerald-50 text-emerald-600 rounded-xl md:rounded-2xl flex items-center justify-center font-black text-sm md:text-lg flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-800">{course.name}</h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                          {course.code}
-                        </span>
-                        {course.description && (
-                          <span className="text-xs text-slate-400">{course.description}</span>
-                        )}
-                      </div>
-                    </div>
+        {loading ? (
+          <div className="card-pro flex flex-col items-center justify-center py-32">
+            <div className="w-16 h-16 border-4 border-[#c8a44e]/20 border-t-[#c8a44e] rounded-full animate-spin"></div>
+            <p className="text-slate-400 font-bold mt-6">جاري جلب المواد...</p>
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="card-pro py-32 text-center">
+            <span className="text-6xl mb-4 block opacity-30">📚</span>
+            <p className="text-slate-400 font-bold text-lg">لا توجد مواد مسندة إليك حالياً</p>
+            <p className="text-slate-300 text-sm mt-2">
+              تواصل مع إدارة القسم لإسناد المواد الدراسية
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {courses.map((course: any, index: number) => (
+              <div
+                key={course.id}
+                className="group relative bg-gradient-to-b from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] p-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 shadow-lg hover:shadow-xl border border-[#c8a44e]/20 overflow-hidden cursor-default"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#c8a44e]/5 rounded-full -translate-y-1/2 translate-x-1/2 group-hover:scale-110 transition-transform duration-500"></div>
+                <div className="relative z-10 flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-bold text-lg text-white mb-2">{course.name}</h3>
+                    {course.description && (
+                      <p className="text-sm text-white/60 leading-relaxed">
+                        {course.description}
+                      </p>
+                    )}
                   </div>
-                  <div className="flex items-center gap-4 mr-auto sm:mr-0 flex-shrink-0">
-                    <div className="text-center">
-                      <span className="text-xl md:text-2xl font-black text-slate-900">
-                        {course.student_count}
-                      </span>
-                      <p className="text-[10px] text-slate-400 font-bold">طالب مسجّل</p>
-                    </div>
+                  <div className="w-12 h-12 bg-black/20 border border-[#c8a44e]/30 text-[#c8a44e] rounded-xl flex items-center justify-center font-black text-lg flex-shrink-0 group-hover:border-[#c8a44e]/60 transition-colors">
+                    {index + 1}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

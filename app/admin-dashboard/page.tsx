@@ -103,7 +103,7 @@ export default function AdminDashboardPage() {
             <svg className="w-5 h-5 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
             الإجراءات السريعة
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
             <Link href="/students" className="p-4 md:p-5 bg-gradient-to-bl from-[#2563eb]/5 to-[#2563eb]/10 rounded-2xl hover:from-[#2563eb]/10 hover:to-[#2563eb]/20 transition-all text-center group border border-[#2563eb]/10">
               <div className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 rounded-xl bg-[#2563eb]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <svg className="w-5 h-5 md:w-6 md:h-6 text-[#2563eb]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 14l9-5-9-5-9 5 9 5z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" /></svg>
@@ -124,6 +124,13 @@ export default function AdminDashboardPage() {
               </div>
               <span className="font-bold text-[#7c3aed] text-sm">إدارة المواد</span>
               <p className="text-slate-400 text-xs mt-1">إضافة، تعديل، حذف</p>
+            </Link>
+            <Link href="/admin-dashboard/carried-over" className="p-4 md:p-5 bg-gradient-to-bl from-[#dc6803]/5 to-[#dc6803]/10 rounded-2xl hover:from-[#dc6803]/10 hover:to-[#dc6803]/20 transition-all text-center group border border-[#dc6803]/10">
+              <div className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 rounded-xl bg-[#dc6803]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-[#dc6803]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+              </div>
+              <span className="font-bold text-[#dc6803] text-sm">المواد المحملة</span>
+              <p className="text-slate-400 text-xs mt-1">إدارة الراسبين</p>
             </Link>
             <Link href="/faculties" className="p-4 md:p-5 bg-gradient-to-bl from-[#e07b39]/5 to-[#e07b39]/10 rounded-2xl hover:from-[#e07b39]/10 hover:to-[#e07b39]/20 transition-all text-center group border border-[#e07b39]/10">
               <div className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-2 md:mb-3 rounded-xl bg-[#e07b39]/10 flex items-center justify-center group-hover:scale-110 transition-transform">

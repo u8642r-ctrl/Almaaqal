@@ -42,6 +42,21 @@ export async function GET() {
 
     const teacherId = teacherResult.rows[0].id;
 
+    // التحقق من وجود مواد مرتبطة بهذا المدرس
+    const teacherCoursesResult = await pool.query(
+      "SELECT COUNT(*) FROM courses WHERE teacher_id = $1",
+      [teacherId]
+    );
+
+    // إذا لم تكن هناك مواد مرتبطة بهذا المدرس، نربط المواد غير المرتبطة بأي مدرس
+    if (parseInt(teacherCoursesResult.rows[0].count) === 0) {
+      // ربط المواد غير المرتبطة بأي مدرس بهذا المدرس
+      await pool.query(
+        "UPDATE courses SET teacher_id = $1 WHERE teacher_id IS NULL",
+        [teacherId]
+      );
+    }
+
     // جلب المواد التي يدرّسها الأستاذ مع عدد الطلاب المسجلين
     const result = await pool.query(
       `SELECT c.id, c.name, c.code, c.description, c.created_at,

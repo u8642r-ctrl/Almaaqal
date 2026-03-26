@@ -3,299 +3,660 @@
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 
+interface CourseContent {
+  content_id: number;
+  content_type: 'lecture' | 'homework';
+  content_title: string;
+  content_description: string;
+  due_date: string | null;
+  created_at: string;
+  submitted_count: number;
+}
+
+interface Course {
+  course_id: number;
+  course_name: string;
+  course_code: string;
+  enrolled_count: number;
+  contents: CourseContent[];
+}
+
+interface Stage {
+  stage: string;
+  courses: { [courseId: string]: Course };
+}
+
+interface HierarchyData {
+  [stage: string]: Stage;
+}
+
+interface CourseStudent {
+  student_id: number;
+  student_name: string;
+  student_email: string;
+  student_stage: string;
+  enrollment_id: number;
+  is_carried_over: boolean;
+  original_stage: string | null;
+  enrollment_status: string;
+  grade_id: number | null;
+  current_grade: number | null;
+  homework_grade_id: number | null;
+  homework_grade: number | null;
+  submission_text: string | null;
+  submitted_at: string | null;
+  feedback: string | null;
+  graded_at: string | null;
+}
+
+interface CourseInfo {
+  id: number;
+  name: string;
+  code: string;
+  stage: string;
+}
+
+interface ContentInfo {
+  id: number;
+  content_type: 'lecture' | 'homework';
+  title: string;
+  description: string;
+  due_date: string | null;
+  max_grade: number;
+}
+
+interface CourseStudentsData {
+  course: CourseInfo;
+  content: ContentInfo | null;
+  students: CourseStudent[];
+}
+
+type NavigationStep = 'stages' | 'courses' | 'evaluation';
+
+interface NavigationState {
+  step: NavigationStep;
+  selectedStage?: string;
+  selectedCourse?: Course;
+  selectedContent?: CourseContent;
+}
+
 export default function TeacherGradesPage() {
   const { data: session } = useSession();
-  const [courses, setCourses] = useState<any[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<number | null>(null);
-  const [enrolledStudents, setEnrolledStudents] = useState<any[]>([]);
-  const [existingGrades, setExistingGrades] = useState<any[]>([]);
+  const [hierarchyData, setHierarchyData] = useState<HierarchyData>({});
+  const [courseStudentsData, setCourseStudentsData] = useState<CourseStudentsData | null>(null);
+  const [navigation, setNavigation] = useState<NavigationState>({ step: 'stages' });
   const [loading, setLoading] = useState(true);
-  const [studentsLoading, setStudentsLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "warning" | "info" } | null>(null);
 
-  // جلب مواد الأستاذ
-  useEffect(() => {
-    if (!session?.user?.email) return;
-    fetch("/api/teacher/courses")
-      .then((r) => r.json())
-      .then((data) => {
-        setCourses(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [session]);
+  // Toast notification
+  const showToast = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
-  // إخفاء التنبيه تلقائياً
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  // جلب طلاب المادة المحددة ودرجاتهم
-  const loadCourseStudents = async (courseId: number) => {
-    setSelectedCourse(courseId);
-    setStudentsLoading(true);
-
+  // Fetch hierarchy data
+  const fetchHierarchy = async () => {
     try {
-      const [enrollRes, gradesRes] = await Promise.all([
-        fetch(`/api/enrollments?course_id=${courseId}`).then((r) => r.json()),
-        fetch(`/api/grades?course_id=${courseId}`).then((r) => r.json()),
-      ]);
-
-      setEnrolledStudents(Array.isArray(enrollRes) ? enrollRes : []);
-      setExistingGrades(Array.isArray(gradesRes) ? gradesRes : []);
-    } catch {
-      setToast({ message: "فشل في جلب البيانات", type: "error" });
+      setLoading(true);
+      const response = await fetch('/api/teacher/content/hierarchy');
+      if (response.ok) {
+        const data = await response.json();
+        setHierarchyData(data);
+      } else {
+        showToast("خطأ في جلب البيانات", "error");
+      }
+    } catch (err) {
+      showToast("خطأ في الاتصال بالخادم", "error");
     } finally {
-      setStudentsLoading(false);
+      setLoading(false);
     }
   };
 
-  // حفظ/تعديل درجة
-  const saveGrade = async (studentId: number, courseId: number, gradeValue: string) => {
-    const numGrade = parseFloat(gradeValue);
-    if (isNaN(numGrade) || numGrade < 0 || numGrade > 100) {
-      setToast({ message: "الدرجة يجب أن تكون بين 0 و 100", type: "error" });
-      return;
-    }
-
-    // هل توجد درجة مسبقة؟
-    const existing = existingGrades.find(
-      (g) => g.student_id === studentId && g.course_id === courseId
-    );
-
+  // Fetch course students data
+  const fetchCourseStudents = async (courseId: number) => {
     try {
-      if (existing) {
-        // تعديل الدرجة الموجودة
-        await fetch(`/api/grades?id=${existing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ grade: numGrade }),
-        });
+      setLoading(true);
+      let url = `/api/teacher/content/students?course_id=${courseId}`;
+
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setCourseStudentsData(data);
       } else {
-        // إضافة درجة جديدة
-        await fetch("/api/grades", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+        showToast("خطأ في جلب بيانات الطلاب", "error");
+      }
+    } catch (err) {
+      showToast("خطأ في الاتصال بالخادم", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save grade
+  const saveGrade = async (studentId: number, courseId: number, grade: number) => {
+    const key = `${studentId}-${courseId}-course`;
+    try {
+      setSaving(prev => ({ ...prev, [key]: true }));
+
+        // Save course grade
+        const response = await fetch('/api/grades', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             student_id: studentId,
             course_id: courseId,
-            grade: numGrade,
-          }),
+            grade: grade
+          })
         });
-      }
 
-      setToast({ message: "تم حفظ الدرجة بنجاح", type: "success" });
-      // إعادة تحميل الدرجات
-      loadCourseStudents(courseId);
-    } catch {
-      setToast({ message: "فشل في حفظ الدرجة", type: "error" });
+        if (response.ok) {
+          showToast("تم حفظ الدرجة بنجاح", "success");
+          // Refresh data
+          if (navigation.selectedCourse) {
+            fetchCourseStudents(navigation.selectedCourse.course_id);
+          }
+        } else {
+          const errorData = await response.json();
+          console.error('Grade save error:', errorData);
+          showToast(`خطأ في حفظ الدرجة: ${errorData.error || 'خطأ غير معروف'}`, "error");
+        }
+    } catch (err) {
+      showToast("خطأ في الاتصال بالخادم", "error");
+    } finally {
+      setSaving(prev => ({ ...prev, [key]: false }));
     }
   };
 
-  // الحصول على الدرجة الحالية للطالب في المادة
-  const getStudentGrade = (studentId: number) => {
-    const grade = existingGrades.find((g) => g.student_id === studentId);
-    return grade?.grade ?? "";
+  // Delete grade
+  const deleteGrade = async (gradeId: number) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الدرجة؟')) {
+      return;
+    }
+
+    try {
+        const response = await fetch(`/api/grades?id=${gradeId}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          showToast("تم حذف الدرجة بنجاح", "success");
+          if (navigation.selectedCourse) {
+            fetchCourseStudents(navigation.selectedCourse.course_id);
+          }
+        } else {
+          showToast("خطأ في حذف الدرجة", "error");
+        }
+    } catch (err) {
+      showToast("خطأ في الاتصال بالخادم", "error");
+    }
   };
 
-  if (loading) {
+  // Navigation functions
+  const goToStages = () => {
+    setNavigation({ step: 'stages' });
+    setCourseStudentsData(null);
+  };
+
+  const goToStage = (stage: string) => {
+    setNavigation({ step: 'courses', selectedStage: stage });
+    setCourseStudentsData(null);
+  };
+
+  const goToCourse = (course: Course) => {
+    setNavigation(prev => ({ ...prev, step: 'evaluation', selectedCourse: course }));
+    fetchCourseStudents(course.course_id);
+  };
+
+  useEffect(() => {
+    if (session) {
+      fetchHierarchy();
+    }
+  }, [session]);
+
+  if (loading && navigation.step === 'stages') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-400 font-bold">جاري التحميل...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-gray-600 mt-4">جاري التحميل...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f0f4f8] bg-pattern p-3 sm:p-4 md:p-8 font-sans overflow-x-hidden" dir="rtl">
-      <div className="w-full max-w-6xl mx-auto">
-        <div className="mb-6 md:mb-8 animate-fade-in-up">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#059669] to-[#c8a44e] rounded-full"></div>
-            <p className="text-[10px] md:text-xs font-bold text-[#059669]/60 uppercase tracking-widest">بوابة التدريسي</p>
-          </div>
-          <h1 className="text-xl sm:text-2xl md:text-4xl font-black text-[#0f2744] tracking-tight">إدارة الدرجات</h1>
-          <p className="text-slate-500 text-xs md:text-sm mt-1">رصد وتعديل درجات الطلاب</p>
-        </div>
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">إدارة الدرجات والتقييم</h1>
 
-        {/* اختيار المادة */}
-        <div className="card-pro p-4 md:p-6 mb-6">
-          <h2 className="text-sm md:text-base font-black text-[#0f2744] mb-3 md:mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-            اختر المادة
-          </h2>
-          {courses.length === 0 ? (
-            <p className="text-slate-400 text-center py-4">لا توجد مواد مسندة إليك</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-              {courses.map((course: any) => (
+          {/* Breadcrumb */}
+          <nav className="flex items-center space-x-2 rtl:space-x-reverse">
+            <button
+              onClick={goToStages}
+              className={`px-3 py-1 rounded-md text-sm transition-colors ${
+                navigation.step === 'stages'
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'text-gray-600 hover:text-blue-600'
+              }`}
+            >
+              المراحل
+            </button>
+
+            {navigation.selectedStage && (
+              <>
+                <span className="text-gray-400">/</span>
                 <button
-                  key={course.id}
-                  onClick={() => loadCourseStudents(course.id)}
-                  className={`p-4 rounded-2xl text-right transition-all border-2 ${
-                    selectedCourse === course.id
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-slate-100 bg-slate-50 hover:border-emerald-200"
+                  onClick={() => goToStage(navigation.selectedStage!)}
+                  className={`px-3 py-1 rounded-md text-sm transition-colors ${
+                    navigation.step === 'courses'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'text-gray-600 hover:text-blue-600'
                   }`}
                 >
-                  <h3 className="font-bold text-slate-800">{course.name}</h3>
-                  <p className="text-xs text-slate-400 mt-1">{course.code}</p>
-                  <p className="text-xs font-bold text-emerald-600 mt-2">
-                    {course.student_count} طالب
-                  </p>
+                  المرحلة {navigation.selectedStage}
                 </button>
-              ))}
-            </div>
-          )}
+              </>
+            )}
+
+            {navigation.selectedCourse && (
+              <>
+                <span className="text-gray-400">/</span>
+                <button
+                  onClick={() => goToCourse(navigation.selectedCourse!)}
+                  className={`px-3 py-1 rounded-md text-sm transition-colors ${
+                    navigation.step === 'evaluation'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'text-gray-600 hover:text-blue-600'
+                  }`}
+                >
+                  {navigation.selectedCourse.course_name}
+                </button>
+              </>
+            )}
+
+          </nav>
         </div>
 
-        {/* قائمة الطلاب والدرجات */}
-        {selectedCourse && (
-          <div className="card-pro overflow-hidden">
-            <div className="p-4 md:p-8 border-b border-slate-50">
-              <h2 className="text-base md:text-lg font-black text-slate-900">
-                🎓 طلاب المادة - رصد الدرجات
-              </h2>
-              <p className="text-slate-400 text-xs md:text-sm mt-1">أدخل الدرجة ثم اضغط Enter أو زر الحفظ</p>
-            </div>
+        {/* Toast notification */}
+        {toast && (
+          <div className={`mb-6 p-4 rounded-md ${
+            toast.type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
+            toast.type === 'error' ? 'bg-red-100 border-red-400 text-red-700' :
+            toast.type === 'warning' ? 'bg-yellow-100 border-yellow-400 text-yellow-700' :
+            'bg-blue-100 border-blue-400 text-blue-700'
+          } border`}>
+            {toast.message}
+          </div>
+        )}
 
-            {studentsLoading ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <div className="w-12 h-12 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin"></div>
-                <p className="text-slate-400 font-bold mt-4">جاري تحميل الطلاب...</p>
+        {/* Main content */}
+        {navigation.step === 'stages' && (
+          <StagesView
+            hierarchyData={hierarchyData}
+            goToStage={goToStage}
+          />
+        )}
+
+        {navigation.step === 'courses' && navigation.selectedStage && (
+          <CoursesView
+            stage={navigation.selectedStage}
+            courses={hierarchyData[navigation.selectedStage]?.courses || {}}
+            goToCourse={goToCourse}
+          />
+        )}
+
+        {navigation.step === 'contents' && navigation.selectedCourse && (
+          <ContentsView
+            course={navigation.selectedCourse}
+            goToContent={goToContent}
+            goToGeneralEvaluation={goToGeneralEvaluation}
+          />
+        )}
+
+        {navigation.step === 'evaluation' && courseStudentsData && (
+          <EvaluationView
+            courseStudentsData={courseStudentsData}
+            saving={saving}
+            saveGrade={saveGrade}
+            deleteGrade={deleteGrade}
+            selectedContent={navigation.selectedContent}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Stages view component
+function StagesView({ hierarchyData, goToStage }: { hierarchyData: HierarchyData; goToStage: (stage: string) => void }) {
+  const stages = Object.keys(hierarchyData).sort((a, b) => parseInt(a) - parseInt(b));
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-6">اختر المرحلة</h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stages.map((stage) => {
+          const stageData = hierarchyData[stage];
+          const coursesCount = Object.keys(stageData.courses).length;
+          const totalStudents = Object.values(stageData.courses).reduce((sum, course) => sum + course.enrolled_count, 0);
+
+          return (
+            <div
+              key={stage}
+              onClick={() => goToStage(stage)}
+              className="group cursor-pointer bg-gradient-to-b from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] border border-[#c8a44e]/20 rounded-lg p-6 transition-all duration-200 hover:shadow-lg hover:scale-105"
+            >
+              <div className="text-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-black/20 border border-[#c8a44e]/30 group-hover:border-[#c8a44e]/60 rounded-full flex items-center justify-center transition-colors">
+                  <span className="text-[#c8a44e] text-xl font-bold">{stage}</span>
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">المرحلة {stage}</h3>
+                <p className="text-sm text-white/70">{coursesCount} مادة دراسية</p>
               </div>
-            ) : enrolledStudents.length === 0 ? (
-              <div className="py-20 text-center">
-                <span className="text-5xl mb-4 block opacity-30">🎓</span>
-                <p className="text-slate-400 font-bold">لا يوجد طلاب مسجلون في هذه المادة</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                {/* Desktop Table */}
-                <table className="hidden md:table w-full text-right border-collapse">
-                  <thead>
-                    <tr className="text-slate-400 text-[11px] font-black uppercase tracking-[0.15em] border-b border-slate-50">
-                      <th className="p-6">#</th>
-                      <th className="p-6">اسم الطالب</th>
-                      <th className="p-6">البريد</th>
-                      <th className="p-6 text-center">الدرجة</th>
-                      <th className="p-6 text-center">إجراء</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50/50">
-                    {enrolledStudents.map((student: any, index: number) => {
-                      const currentGrade = getStudentGrade(student.student_id);
-                      return (
-                        <tr key={student.id} className="hover:bg-slate-50/80 transition-all">
-                          <td className="p-6 text-slate-400 text-sm font-bold">{index + 1}</td>
-                          <td className="p-6 font-bold text-slate-800">{student.student_name}</td>
-                          <td className="p-6 text-slate-500 text-sm">{student.student_email}</td>
-                          <td className="p-6">
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              defaultValue={currentGrade}
-                              placeholder="0-100"
-                              className="w-24 mx-auto block text-center p-2 bg-slate-50 rounded-xl border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none font-bold"
-                              id={`grade-${student.student_id}`}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  const input = document.getElementById(
-                                    `grade-${student.student_id}`
-                                  ) as HTMLInputElement;
-                                  saveGrade(student.student_id, selectedCourse!, input.value);
-                                }
-                              }}
-                            />
-                          </td>
-                          <td className="p-6 text-center">
-                            <button
-                              onClick={() => {
-                                const input = document.getElementById(
-                                  `grade-${student.student_id}`
-                                ) as HTMLInputElement;
-                                saveGrade(student.student_id, selectedCourse!, input.value);
-                              }}
-                              className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
-                            >
-                              حفظ
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {/* Mobile Card View */}
-                <div className="md:hidden divide-y divide-slate-100">
-                  {enrolledStudents.map((student: any, index: number) => {
-                    const currentGrade = getStudentGrade(student.student_id);
-                    return (
-                      <div key={student.id} className="p-4 hover:bg-slate-50/80 transition-all">
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="flex-1 min-w-0">
-                            <span className="text-xs text-slate-400 font-bold">#{index + 1}</span>
-                            <p className="font-bold text-slate-800 text-sm">{student.student_name}</p>
-                            <p className="text-slate-400 text-[11px] truncate">{student.student_email}</p>
-                          </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {stages.length === 0 && (
+        <div className="text-center py-12">
+          <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مراحل متاحة</h3>
+          <p className="text-gray-600">لم يتم العثور على مواد دراسية مرتبطة بحسابك</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Courses view component
+function CoursesView({
+  stage,
+  courses,
+  goToCourse
+}: {
+  stage: string;
+  courses: { [courseId: string]: Course };
+  goToCourse: (course: Course) => void
+}) {
+  const coursesArray = Object.values(courses);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <h2 className="text-xl font-semibold text-gray-900 mb-8">
+        اختر المادة من المرحلة {stage}
+      </h2>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {coursesArray.map((course) => (
+          <button
+            key={course.course_id}
+            onClick={() => goToCourse(course)}
+            className="w-full bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] text-white p-4 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg flex items-center justify-between border border-[#c8a44e]/20"
+          >
+            <div className="text-right">
+              <div className="text-lg font-bold">{course.course_name}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {coursesArray.length === 0 && (
+        <div className="text-center py-12">
+          <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">لا توجد مواد دراسية</h3>
+          <p className="text-gray-600">لا توجد مواد دراسية لهذه المرحلة</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Evaluation view component
+function EvaluationView({
+  courseStudentsData,
+  saving,
+  saveGrade,
+  deleteGrade
+}: {
+  courseStudentsData: CourseStudentsData;
+  saving: Record<string, boolean>;
+  saveGrade: (studentId: number, courseId: number, grade: number) => void;
+  deleteGrade: (gradeId: number) => void;
+}) {
+  const [grades, setGrades] = useState<Record<string, string>>({});
+  const [savedGrades, setSavedGrades] = useState<Set<string>>(new Set());
+
+  // Grade mappings
+  const gradeOptions = [
+    { label: 'امتياز', value: 90 },
+    { label: 'جيد جدا', value: 80 },
+    { label: 'جيد', value: 70 },
+    { label: 'متوسط', value: 60 },
+    { label: 'مقبول', value: 50 },
+    { label: 'راسب', value: 0 }
+  ];
+
+  const getGradeLabel = (gradeValue: number) => {
+    if (gradeValue >= 90) return 'امتياز';
+    if (gradeValue >= 80) return 'جيد جدا';
+    if (gradeValue >= 70) return 'جيد';
+    if (gradeValue >= 60) return 'متوسط';
+    if (gradeValue >= 50) return 'مقبول';
+    return 'راسب';
+  };
+
+  const handleGradeChange = (studentId: number, grade: string) => {
+    const key = `${studentId}-course`;
+    setGrades(prev => ({ ...prev, [key]: grade }));
+  };
+
+  const handleSaveGrade = async (student: CourseStudent) => {
+    const key = `${student.student_id}-course`;
+    const gradeValue = parseFloat(grades[key]);
+
+    if (!isNaN(gradeValue) && gradeValue >= 0 && gradeValue <= 100) {
+      await saveGrade(
+        student.student_id,
+        courseStudentsData.course.id,
+        gradeValue
+      );
+
+      // Mark this grade as saved
+      setSavedGrades(prev => new Set([...prev, key]));
+
+      // Clear the input after successful save
+      setGrades(prev => {
+        const newGrades = { ...prev };
+        delete newGrades[key];
+        return newGrades;
+      });
+    }
+  };
+
+  const handleDeleteGrade = async (gradeId: number) => {
+    await deleteGrade(gradeId);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
+        <h2 className="text-xl font-semibold">
+          {`تقييم المادة: ${courseStudentsData.course.name}`}
+        </h2>
+        <p className="text-blue-100 mt-1">
+          المرحلة {courseStudentsData.course.stage}
+        </p>
+      </div>
+
+      {/* Students list */}
+      <div className="p-6">
+        {courseStudentsData.students.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+              <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">لا يوجد طلاب مسجلين</h3>
+            <p className="text-gray-600">لا يوجد طلاب مسجلين في هذه المادة</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {courseStudentsData.students.map((student) => {
+              const key = `${student.student_id}-course`;
+              const currentGrade = student.current_grade;
+              const gradeId = student.grade_id;
+              const isSaving = saving[`${student.student_id}-${courseStudentsData.course.id}-course`];
+              const hasSaved = savedGrades.has(key);
+
+              return (
+                <div key={`${student.student_id}-${key}`} className={`border rounded-lg p-4 ${
+                  student.is_carried_over
+                    ? 'border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50'
+                    : 'border-gray-200'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          student.is_carried_over
+                            ? 'bg-orange-100'
+                            : 'bg-blue-100'
+                        }`}>
+                          <span className={`font-semibold text-sm ${
+                            student.is_carried_over
+                              ? 'text-orange-600'
+                              : 'text-blue-600'
+                          }`}>
+                            {student.student_name.charAt(0)}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            defaultValue={currentGrade}
-                            placeholder="0-100"
-                            className="flex-1 text-center p-2 bg-slate-50 rounded-xl border border-slate-200 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 outline-none font-bold text-sm"
-                            id={`grade-mobile-${student.student_id}`}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                const input = document.getElementById(
-                                  `grade-mobile-${student.student_id}`
-                                ) as HTMLInputElement;
-                                saveGrade(student.student_id, selectedCourse!, input.value);
-                              }
-                            }}
-                          />
-                          <button
-                            onClick={() => {
-                              const input = document.getElementById(
-                                `grade-mobile-${student.student_id}`
-                              ) as HTMLInputElement;
-                              saveGrade(student.student_id, selectedCourse!, input.value);
-                            }}
-                            className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition-colors shadow-lg shadow-emerald-200"
-                          >
-                            حفظ
-                          </button>
+                        <div>
+                          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                            <h3 className="font-semibold text-gray-900">{student.student_name}</h3>
+                            {student.is_carried_over && (
+                              <span className="px-2 py-1 bg-orange-500 text-white text-xs rounded-full font-medium">
+                                {student.original_stage && student.original_stage !== student.student_stage
+                                  ? `محمل من ${student.original_stage}`
+                                  : 'محمل'
+                                }
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-600">{student.student_email}</p>
+                          <p className="text-xs text-gray-500">
+                            المرحلة {student.student_stage}
+                            {student.is_carried_over && (
+                              <span className="text-orange-600 font-medium mr-2">
+                                (أصلاً: المرحلة {student.original_stage})
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
+                    </div>
+
+                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                      {/* Current grade display */}
+                      {currentGrade !== null && (
+                        <div className={`text-center px-3 py-2 rounded-lg border ${student.is_carried_over ? 'bg-orange-50 border-orange-300' : 'bg-green-50 border-green-200'}`}>
+                          <div className={`text-xs mb-1 ${student.is_carried_over ? 'text-orange-600' : 'text-gray-500'}`}>التقدير الحالي</div>
+                          <div className={`text-base font-bold ${student.is_carried_over ? 'text-orange-700' : 'text-green-700'}`}>
+                            {getGradeLabel(currentGrade)}
+                          </div>
+                          <div className={`text-xs mt-1 ${student.is_carried_over ? 'text-orange-600' : 'text-gray-500'}`}>({currentGrade})</div>
+                        </div>
+                      )}
+
+                      {/* Grade selection */}
+                      {!hasSaved && !gradeId && (
+                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                          <select
+                            value={grades[key] || ''}
+                            onChange={(e) => handleGradeChange(student.student_id, e.target.value)}
+                            className={`px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white ${
+                              student.is_carried_over ? 'border-orange-400 text-orange-900' : 'border-gray-300'
+                            }`}
+                          >
+                            <option value="">اختر التقدير</option>
+                            {gradeOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => handleSaveGrade(student)}
+                            disabled={!grades[key] || isSaving}
+                            className={`px-4 py-2 rounded-md font-medium transition-colors flex items-center space-x-1 rtl:space-x-reverse ${
+                              !grades[key] || isSaving
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : student.is_carried_over
+                                  ? 'bg-orange-600 text-white hover:bg-orange-700 shadow-sm'
+                                  : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            {isSaving ? (
+                              <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                <span>حفظ</span>
+                              </div>
+                            ) : (
+                              <span>{student.is_carried_over ? 'حفظ درجة التحميل' : 'حفظ'}</span>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {gradeId && (
+                        <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                          <div className={`px-4 py-2 rounded-md font-medium flex items-center space-x-2 rtl:space-x-reverse ${
+                            student.is_carried_over ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-700'
+                          }`}>
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                            <span>{student.is_carried_over ? 'درجة التحميل محفوظة' : 'محفوظ'}</span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteGrade(gradeId)}
+                            className={`px-3 py-2 text-white rounded-md font-medium transition-colors flex items-center space-x-1 rtl:space-x-reverse ${
+                              student.is_carried_over ? 'bg-orange-600 hover:bg-orange-700 shadow-sm' : 'bg-red-600 hover:bg-red-700'
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              {student.is_carried_over ? (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              ) : (
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              )}
+                            </svg>
+                            <span>{student.is_carried_over ? 'تعديل التحميل' : 'حذف'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })}
           </div>
         )}
       </div>
-
-      {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed bottom-4 left-4 right-4 md:left-6 md:right-auto md:bottom-6 px-4 md:px-6 py-3 md:py-4 rounded-2xl shadow-2xl text-white font-bold text-sm md:text-base z-[70] ${
-            toast.type === "success" ? "bg-slate-900" : "bg-red-500"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 }

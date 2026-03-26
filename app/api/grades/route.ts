@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// إضافة درجة
+// إضافة أو تحديث درجة
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
@@ -56,8 +56,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "معرّف الطالب والمادة والدرجة مطلوبة" }, { status: 400 });
     }
 
+    // استخدام ON CONFLICT لتحديث الدرجة إذا كانت موجودة بدلاً من إضافة سجل جديد
     const result = await pool.query(
-      "INSERT INTO grades (student_id, course_id, grade, semester) VALUES ($1, $2, $3, $4) RETURNING *",
+      `INSERT INTO grades (student_id, course_id, grade, semester)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (student_id, course_id, semester)
+       DO UPDATE SET grade = EXCLUDED.grade
+       RETURNING *`,
       [student_id, course_id, grade, semester || "2025-2026"]
     );
 
@@ -78,7 +83,22 @@ export async function PUT(req: NextRequest) {
 
   try {
     const { grade } = await req.json();
+
+    // جلب معلومات الدرجة للتحقق من حالة التسجيل
+    const gradeInfo = await pool.query(
+      "SELECT student_id, course_id FROM grades WHERE id = $1",
+      [id]
+    );
+
+    if (gradeInfo.rows.length === 0) {
+      return NextResponse.json({ error: "الدرجة غير موجودة" }, { status: 404 });
+    }
+
+    const { student_id, course_id } = gradeInfo.rows[0];
+
+    // تحديث الدرجة
     await pool.query("UPDATE grades SET grade = $1 WHERE id = $2", [grade, id]);
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
@@ -95,7 +115,21 @@ export async function DELETE(req: NextRequest) {
   if (!id) return NextResponse.json({ error: "معرّف الدرجة مطلوب" }, { status: 400 });
 
   try {
+    // جلب معلومات الدرجة قبل حذفها
+    const gradeInfo = await pool.query(
+      "SELECT student_id, course_id FROM grades WHERE id = $1",
+      [id]
+    );
+
+    if (gradeInfo.rows.length === 0) {
+      return NextResponse.json({ error: "الدرجة غير موجودة" }, { status: 404 });
+    }
+
+    const { student_id, course_id } = gradeInfo.rows[0];
+
+    // حذف الدرجة
     await pool.query("DELETE FROM grades WHERE id = $1", [id]);
+
     return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

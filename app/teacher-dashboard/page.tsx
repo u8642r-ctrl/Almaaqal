@@ -159,12 +159,8 @@ export default function TeacherDashboardPage() {
                     </div>
                     <div>
                       <span className="font-bold text-[#0f2744] text-sm">{c.name}</span>
-                      <span className="text-slate-400 text-xs mr-2">({c.code})</span>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-[#059669] bg-[#059669]/10 px-2.5 py-1 rounded-lg">
-                    {c.student_count} طالب
-                  </span>
                 </div>
               ))}
             </div>

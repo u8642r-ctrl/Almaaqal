@@ -4,7 +4,7 @@ import pool from '../../../lib/db';
 export async function GET(req: NextRequest) {
   try {
     const result = await pool.query(`
-      SELECT c.id, c.name, c.code, c.description, c.teacher_id, c.created_at,
+      SELECT c.id, c.name, c.code, c.description, c.teacher_id, c.stage, c.term, c.created_at,
              t.name as teacher_name, t.department as teacher_department
       FROM courses c
       LEFT JOIN teachers t ON c.teacher_id = t.id
@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const contentType = req.headers.get('content-type') || '';
-    
-    let name: string, code: string, description: string, teacher_id: string | null;
+
+    let name: string, code: string, description: string, teacher_id: string | null, stage: string | null, term: string | null;
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
@@ -31,12 +31,16 @@ export async function POST(req: NextRequest) {
       code = formData.get('code') as string || '';
       description = formData.get('description') as string || '';
       teacher_id = formData.get('teacher_id') as string || null;
+      stage = formData.get('stage') as string || null;
+      term = formData.get('term') as string || null;
     } else {
       const body = await req.json();
       name = body.title || body.name || '';
       code = body.code || '';
       description = body.description || '';
       teacher_id = body.teacher_id || null;
+      stage = body.stage || null;
+      term = body.term || null;
     }
 
     if (!name || !code) {
@@ -44,8 +48,8 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await pool.query(
-      'INSERT INTO courses (name, code, description, teacher_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, code, description || null, teacher_id || null]
+      'INSERT INTO courses (name, code, description, teacher_id, stage, term) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [name, code, description || null, teacher_id || null, stage || null, term || null]
     );
     return new Response(JSON.stringify(result.rows[0]), {
       status: 201,
@@ -80,13 +84,15 @@ export async function PUT(req: NextRequest) {
     const code = body.code || '';
     const description = body.description || '';
     const teacher_id = body.teacher_id || null;
+    const stage = body.stage || null;
+    const term = body.term || null;
 
     if (!name || !code) {
       return new Response(JSON.stringify({ error: 'اسم المادة والرمز مطلوبان' }), { status: 400 });
     }
     await pool.query(
-      'UPDATE courses SET name = $1, code = $2, description = $3, teacher_id = $4 WHERE id = $5',
-      [name, code, description || null, teacher_id || null, id]
+      'UPDATE courses SET name = $1, code = $2, description = $3, teacher_id = $4, stage = $5, term = $6 WHERE id = $7',
+      [name, code, description || null, teacher_id || null, stage || null, term || null, id]
     );
     return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err: any) {

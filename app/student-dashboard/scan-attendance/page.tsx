@@ -6,23 +6,173 @@ import { useZxing } from "react-zxing";
 
 // مكوّن منفصل للكاميرا حتى لا يتأثر الـ hook بالشروط
 function BarcodeScanner({ onScan, onClose }: { onScan: (code: string) => void; onClose: () => void }) {
+  const [mounted, setMounted] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [permissionChecked, setPermissionChecked] = useState(false);
+  const [cameraStarted, setCameraStarted] = useState(false);
+  const [debugInfo, setDebugInfo] = useState("");
   const scannedRef = useRef(false);
+
+  useEffect(() => {
+    setMounted(true);
+    checkCameraPermission();
+  }, []);
+
+  const checkCameraPermission = async () => {
+    if (typeof navigator === 'undefined') return;
+
+    setDebugInfo("بدء فحص الكاميرا...");
+
+    try {
+      // فحص إذا كان المتصفح يدعم الكاميرا
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError("متصفحك لا يدعم الكاميرا. جرب متصفح Chrome أو Firefox الحديث");
+        setPermissionChecked(true);
+        return;
+      }
+
+      // فحص إذا كان الموقع يستخدم HTTPS أو localhost
+      const isSecure = location.protocol === 'https:' || location.hostname === 'localhost';
+      if (!isSecure) {
+        setCameraError("الكاميرا تتطلب HTTPS للعمل. الرجاء استخدام HTTPS أو إدخال الرمز يدوياً");
+        setPermissionChecked(true);
+        return;
+      }
+
+      setDebugInfo("طلب إذن الكاميرا...");
+
+      // طلب إذن الكاميرا مع constraints مبسطة للهاتف
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      });
+
+      setDebugInfo("تم الحصول على إذن الكاميرا ✅");
+
+      // إغلاق الـ stream فوراً بعد التأكد من الإذن
+      stream.getTracks().forEach(track => track.stop());
+      setPermissionChecked(true);
+
+      // انتظار قليل قبل بدء الكاميرا
+      setTimeout(() => {
+        setCameraStarted(true);
+        setDebugInfo("جاري بدء الكاميرا...");
+      }, 500);
+
+    } catch (error: any) {
+      let errorMessage = "فشل في الوصول للكاميرا: ";
+      if (error.name === 'NotAllowedError') {
+        errorMessage += "تم رفض الإذن. الرجاء السماح للكاميرا في إعدادات المتصفح";
+      } else if (error.name === 'NotFoundError') {
+        errorMessage += "لم يتم العثور على كاميرا في الجهاز";
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage += "الكاميرا غير مدعومة في هذا المتصفح";
+      } else {
+        errorMessage += error.message || "خطأ غير معروف";
+      }
+
+      setDebugInfo(`خطأ: ${error.name} - ${error.message}`);
+      setCameraError(errorMessage);
+      setPermissionChecked(true);
+    }
+  };
+
   const { ref } = useZxing({
     onResult(result) {
       if (scannedRef.current) return;
       scannedRef.current = true;
       const text = result.getText();
-      if (navigator.vibrate) navigator.vibrate(200);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(200);
+      }
+      setDebugInfo(`تم اكتشاف كود: ${text}`);
       onScan(text);
     },
-    onError() {
-      // أخطاء عادية أثناء البحث - تجاهل
+    onError(error) {
+      // أخطاء عادية أثناء البحث - لا نعرضها للمستخدم
+      console.log("QR scan error (normal):", error);
     },
     constraints: {
-      video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: {
+        facingMode: "environment",
+        width: { ideal: 640, min: 320 },
+        height: { ideal: 480, min: 240 }
+      },
       audio: false,
     },
+    paused: !cameraStarted, // تأكد من أن الكاميرا لا تبدأ قبل الإذن
   });
+
+  // timeout للكاميرا
+  useEffect(() => {
+    if (cameraStarted) {
+      const timeout = setTimeout(() => {
+        if (!scannedRef.current) {
+          setDebugInfo("الكاميرا تعمل ولكن لم يتم اكتشاف كود بعد");
+        }
+      }, 5000);
+      return () => clearTimeout(timeout);
+    }
+  }, [cameraStarted]);
+
+  if (!mounted || !permissionChecked) {
+    return (
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <div className="animate-spin w-8 h-8 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
+          <p className="text-white">جاري التحقق من الكاميرا...</p>
+          {debugInfo && <p className="text-blue-300 text-sm mt-2">{debugInfo}</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (cameraError) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black text-red-300">❌ خطأ في الكاميرا</h2>
+          <button
+            onClick={onClose}
+            className="bg-red-500/20 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all border border-red-400/30"
+          >
+            ✕ إغلاق
+          </button>
+        </div>
+        <div className="bg-red-500/20 border border-red-400/30 rounded-2xl p-6 text-red-100">
+          <p className="mb-4">{cameraError}</p>
+          <div className="text-sm space-y-2">
+            <p><strong>الحلول:</strong></p>
+            <ul className="list-disc list-inside space-y-1 mr-4">
+              <li>استخدم متصفح Chrome أو Firefox الحديث</li>
+              <li>اسمح للكاميرا في إعدادات المتصفح</li>
+              <li>تأكد من أن الموقع يستخدم HTTPS</li>
+              <li>جرب زر "كاميرا بديلة" أسفل</li>
+              <li>أو استخدم إدخال الرمز يدوياً</li>
+            </ul>
+          </div>
+
+          {/* زر للكاميرا البديلة */}
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                setCameraError("");
+                setDebugInfo("جاري تجربة كاميرا بديلة...");
+                // إعادة تعيين وتجربة مرة أخرى مع إعدادات مختلفة
+                window.location.reload();
+              }}
+              className="w-full bg-amber-500/20 hover:bg-amber-500/40 text-amber-100 py-3 rounded-xl text-sm font-bold transition-all border border-amber-400/30"
+            >
+              🔄 جرب كاميرا بديلة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -36,8 +186,24 @@ function BarcodeScanner({ onScan, onClose }: { onScan: (code: string) => void; o
         </button>
       </div>
       <p className="text-blue-200 text-sm text-center">وجّه الكاميرا نحو الباركود المعروض على شاشة الأستاذ</p>
+
+      {/* إضافة حالة انتظار بدء الكاميرا */}
+      {!cameraStarted && (
+        <div className="text-center py-4">
+          <div className="animate-spin w-6 h-6 border-4 border-white/30 border-t-white rounded-full mx-auto mb-2"></div>
+          <p className="text-white text-sm">جاري تشغيل الكاميرا...</p>
+        </div>
+      )}
+
       <div className="rounded-2xl overflow-hidden bg-black/30 border-2 border-white/20 relative">
-        <video ref={ref} className="w-full" style={{ minHeight: 260, objectFit: "cover" }} playsInline muted />
+        <video
+          ref={ref}
+          className="w-full"
+          style={{ minHeight: 260, objectFit: "cover" }}
+          playsInline
+          muted
+          autoPlay
+        />
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="w-[80%] h-[40%] border-2 border-white/60 rounded-xl relative">
             <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-green-400 rounded-tl-lg"></div>
@@ -47,10 +213,19 @@ function BarcodeScanner({ onScan, onClose }: { onScan: (code: string) => void; o
           </div>
         </div>
       </div>
+
       <div className="flex items-center gap-2 justify-center">
         <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-        <span className="text-green-300 text-sm font-bold">جاري البحث عن باركود...</span>
+        <span className="text-green-300 text-sm font-bold">
+          {cameraStarted ? "جاري البحث عن باركود..." : "انتظار تشغيل الكاميرا..."}
+        </span>
       </div>
+
+      {debugInfo && (
+        <div className="bg-blue-500/20 border border-blue-400/30 rounded-xl p-3 text-sm text-blue-100 text-center">
+          🔍 {debugInfo}
+        </div>
+      )}
     </div>
   );
 }
@@ -208,13 +383,37 @@ export default function StudentScanPage() {
           <p className="text-slate-500 text-xs md:text-sm mt-1">امسح باركود المحاضرة بالكاميرا أو أدخل الرمز يدوياً</p>
         </div>
 
+        {/* HTTPS Warning */}
+        {typeof window !== 'undefined' &&
+         window.location.protocol !== 'https:' &&
+         window.location.hostname !== 'localhost' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 animate-fade-in-up">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.82 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-amber-800 font-bold text-sm mb-1">⚠️ تنبيه: الكاميرا تتطلب HTTPS</h3>
+                <p className="text-amber-700 text-xs mb-2">الكاميرا قد لا تعمل في بعض المتصفحات بدون HTTPS. إذا لم تعمل الكاميرا:</p>
+                <ul className="text-amber-700 text-xs space-y-1 mr-4 list-disc list-inside">
+                  <li>استخدم إدخال الرمز يدوياً أسفل</li>
+                  <li>أو استخدم Chrome/Firefox الحديث</li>
+                  <li>أو اطلب من الإدارة تفعيل HTTPS</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-gradient-to-br from-[#0f2744] to-[#1a3a5c] rounded-2xl p-6 md:p-10 shadow-2xl text-white relative overflow-hidden">
           <div className="absolute top-0 left-0 w-96 h-96 bg-blue-400 rounded-full -ml-48 -mt-48 opacity-10 blur-3xl"></div>
           <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-400 rounded-full mr-[-8rem] mb-[-8rem] opacity-10 blur-3xl"></div>
 
           <div className="relative z-10 space-y-6">
             {!cameraOpen ? (
-              <div className="text-center space-y-4">
+              <div className="space-y-4">
                 <div className="inline-flex items-center justify-center w-24 h-24 bg-white/10 backdrop-blur-sm rounded-3xl border-2 border-white/20 mb-2">
                   <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
@@ -223,9 +422,23 @@ export default function StudentScanPage() {
                 </div>
                 <h2 className="text-2xl font-black">مسح باركود المحاضرة</h2>
                 <p className="text-blue-200 text-sm">افتح الكاميرا وصوّبها على شاشة الأستاذ لمسح الباركود</p>
-                <button onClick={startCamera} className="w-full bg-white text-blue-700 py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-blue-50 transition-all active:scale-[0.98]">
+                <button
+                  onClick={startCamera}
+                  className="w-full bg-white text-blue-700 py-5 rounded-2xl font-black text-lg shadow-xl hover:bg-blue-50 transition-all active:scale-[0.98]"
+                >
                   📷 فتح الكاميرا للمسح
                 </button>
+
+                {/* معلومات إضافية للمساعدة */}
+                <div className="bg-blue-500/10 border border-blue-400/20 rounded-xl p-4 text-sm text-blue-200">
+                  <p className="font-bold mb-2">💡 نصائح للحصول على أفضل أداء:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li>تأكد من أن الإضاءة جيدة حول الباركود</li>
+                    <li>امسك الهاتف بثبات على مسافة 15-30 سم من الشاشة</li>
+                    <li>إذا لم تعمل الكاميرا، استخدم الإدخال اليدوي أسفل</li>
+                  </ul>
+                </div>
+
                 {cameraError && (
                   <div className="bg-red-500/20 border border-red-400/30 rounded-2xl p-4 text-sm text-red-100">
                     ⚠️ {cameraError}

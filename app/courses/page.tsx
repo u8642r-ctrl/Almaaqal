@@ -10,6 +10,8 @@ type Course = {
   teacher_id?: number;
   teacher_name?: string;
   teacher_department?: string;
+  stage?: string;
+  term?: string;
   created_at: string;
 };
 
@@ -45,6 +47,8 @@ export default function CoursesPage() {
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [teacherId, setTeacherId] = useState("");
+  const [stage, setStage] = useState("");
+  const [term, setTerm] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   
@@ -53,6 +57,8 @@ export default function CoursesPage() {
   const [editCode, setEditCode] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editTeacherId, setEditTeacherId] = useState("");
+  const [editStage, setEditStage] = useState("");
+  const [editTerm, setEditTerm] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
   // حالات الأقسام وتصفية الأساتذة
@@ -135,11 +141,18 @@ export default function CoursesPage() {
       const res = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: courseName, code, description, teacher_id: teacherId || null })
+        body: JSON.stringify({
+          name: courseName,
+          code,
+          description,
+          teacher_id: teacherId || null,
+          stage: stage || null,
+          term: term || null
+        })
       });
-      
+
       if (res.ok) {
-        setCourseName(""); setCode(""); setDescription(""); setTeacherId(""); setSelectedDept("");
+        setCourseName(""); setCode(""); setDescription(""); setTeacherId(""); setSelectedDept(""); setStage(""); setTerm("");
         setShowForm(false);
         fetchCourses();
         setToast({ message: "تم إضافة المادة بنجاح", type: 'success' });
@@ -177,6 +190,8 @@ export default function CoursesPage() {
     setEditCode(course.code);
     setEditDescription(course.description || "");
     setEditTeacherId(course.teacher_id ? course.teacher_id.toString() : "");
+    setEditStage(course.stage || "");
+    setEditTerm(course.term || "");
   };
 
   const handleEdit = async () => {
@@ -186,7 +201,14 @@ export default function CoursesPage() {
       await fetch(`/api/courses?id=${editId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, code: editCode, description: editDescription, teacher_id: editTeacherId || null })
+        body: JSON.stringify({
+          name: editName,
+          code: editCode,
+          description: editDescription,
+          teacher_id: editTeacherId || null,
+          stage: editStage || null,
+          term: editTerm || null
+        })
       });
       setEditId(null);
       fetchCourses();
@@ -429,10 +451,11 @@ export default function CoursesPage() {
               <table className="hidden md:table w-full text-right border-collapse">
                 <thead>
                   <tr className="text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] border-b border-slate-50">
-                    <th className="p-6 cursor-pointer hover:text-purple-600" onClick={() => handleSort('code')}>الرمز</th>
                     <th className="p-6 cursor-pointer hover:text-purple-600" onClick={() => handleSort('name')}>اسم المادة</th>
                     <th className="p-6 cursor-pointer hover:text-purple-600" onClick={() => handleSort('teacher_name')}>أستاذ المادة</th>
                     <th className="p-6 cursor-pointer hover:text-purple-600">القسم</th>
+                    <th className="p-6 cursor-pointer hover:text-purple-600" onClick={() => handleSort('stage')}>المرحلة</th>
+                    <th className="p-6 cursor-pointer hover:text-purple-600" onClick={() => handleSort('term')}>الكورس</th>
                     <th className="p-6 text-center">الطلاب</th>
                     <th className="p-6 text-center">الإجراءات</th>
                   </tr>
@@ -440,15 +463,6 @@ export default function CoursesPage() {
                 <tbody className="divide-y divide-slate-50/50">
                   {paginatedCourses.map((course) => (
                     <tr key={course.id} className="group hover:bg-slate-50/80 transition-all">
-                      <td className="p-6">
-                        {editId === course.id ? (
-                          <input value={editCode} onChange={e => setEditCode(e.target.value)} className="w-24 px-3 py-2 border rounded-xl text-sm font-mono" placeholder="CS101" />
-                        ) : (
-                          <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-lg text-xs font-bold font-mono">
-                            {course.code}
-                          </span>
-                        )}
-                      </td>
                       <td className="p-6">
                         {editId === course.id ? (
                           <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm font-bold" placeholder="اسم المادة" />
@@ -478,6 +492,42 @@ export default function CoursesPage() {
                         ) : (
                           <span className="text-sm font-medium text-[#0891b2]">
                             {course.teacher_department || teachers.find(t => t.id === course.teacher_id)?.department || '-'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-6">
+                        {editId === course.id ? (
+                          <select
+                            value={editStage}
+                            onChange={e => setEditStage(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500/20"
+                          >
+                            <option value="">-</option>
+                            <option value="1">المرحلة الأولى</option>
+                            <option value="2">المرحلة الثانية</option>
+                            <option value="3">المرحلة الثالثة</option>
+                            <option value="4">المرحلة الرابعة</option>
+                          </select>
+                        ) : (
+                          <span className="text-sm font-bold text-slate-700">
+                            {course.stage ? `المرحلة ${course.stage}` : '-'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-6">
+                        {editId === course.id ? (
+                          <select
+                            value={editTerm}
+                            onChange={e => setEditTerm(e.target.value)}
+                            className="w-full px-3 py-2 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-500/20"
+                          >
+                            <option value="">-</option>
+                            <option value="كورس_اول">الكورس الأول</option>
+                            <option value="كورس_ثاني">الكورس الثاني</option>
+                          </select>
+                        ) : (
+                          <span className="text-sm font-bold text-slate-700">
+                            {course.term === 'كورس_اول' ? 'الكورس الأول' : course.term === 'كورس_ثاني' ? 'الكورس الثاني' : '-'}
                           </span>
                         )}
                       </td>
@@ -537,12 +587,17 @@ export default function CoursesPage() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">{course.code}</span>
                               <span className="text-slate-800 font-bold text-sm">{course.name}</span>
                             </div>
                             <p className="text-slate-500 text-[11px] mt-1">الأستاذ: {course.teacher_name || teachers.find(t => t.id === course.teacher_id)?.name || '-'}</p>
                             {(course.teacher_department || teachers.find(t => t.id === course.teacher_id)?.department) && (
                               <p className="text-[11px] text-[#0891b2] font-bold mt-0.5">القسم: {course.teacher_department || teachers.find(t => t.id === course.teacher_id)?.department}</p>
+                            )}
+                            {course.stage && (
+                              <p className="text-[11px] text-purple-600 font-bold mt-0.5">المرحلة: {course.stage}</p>
+                            )}
+                            {course.term && (
+                              <p className="text-[11px] text-emerald-600 font-bold mt-0.5">الكورس: {course.term === 'كورس_اول' ? 'الأول' : 'الثاني'}</p>
                             )}
                           </div>
                           <div className="flex gap-1 flex-shrink-0">
@@ -636,7 +691,35 @@ export default function CoursesPage() {
                  )}
               </div>
 
-              
+              <div className="space-y-2">
+                 <label className="text-xs font-bold text-slate-400">المرحلة الدراسية</label>
+                 <select
+                    className="w-full p-3 md:p-4 bg-slate-50 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-purple-500/20 text-sm text-slate-700"
+                    value={stage}
+                    onChange={e => setStage(e.target.value)}
+                 >
+                    <option value="">-- اختر المرحلة --</option>
+                    <option value="1">المرحلة الأولى</option>
+                    <option value="2">المرحلة الثانية</option>
+                    <option value="3">المرحلة الثالثة</option>
+                    <option value="4">المرحلة الرابعة</option>
+                 </select>
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-xs font-bold text-slate-400">الكورس الدراسي</label>
+                 <select
+                    className="w-full p-3 md:p-4 bg-slate-50 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-purple-500/20 text-sm text-slate-700"
+                    value={term}
+                    onChange={e => setTerm(e.target.value)}
+                 >
+                    <option value="">-- اختر الكورس --</option>
+                    <option value="كورس_اول">الكورس الأول</option>
+                    <option value="كورس_ثاني">الكورس الثاني</option>
+                 </select>
+              </div>
+
+
               {formError && <div className="text-red-500 text-xs font-bold text-center">{formError}</div>}
               <div className="flex gap-3 pt-4">
                 <button type="submit" disabled={formLoading} className="flex-1 bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] text-white py-4 rounded-xl font-bold hover:opacity-90 transition-all">حفظ المادة</button>

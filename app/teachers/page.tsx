@@ -34,6 +34,7 @@ export default function TeachersPage() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
+  const [editPassword, setEditPassword] = useState("");
   const [editLoading, setEditLoading] = useState(false);
 
   // حالات الكليات والأقسام
@@ -137,6 +138,7 @@ export default function TeachersPage() {
     setEditEmail(teacher.email);
     setEditPhone(teacher.phone || "");
     setEditDepartment(teacher.department || "");
+    setEditPassword(""); // باسورد فارغ - سيتم تحديثه فقط إذا أدخل الأدمن قيمة جديدة
     const dept = allDepartments.find(d => d.name === teacher.department);
     setEditSelectedFacultyId(dept ? String(dept.faculty_id) : "");
   };
@@ -145,10 +147,22 @@ export default function TeachersPage() {
     if (!editName || !editEmail) return;
     setEditLoading(true);
     try {
+      const payload: any = {
+        name: editName,
+        email: editEmail,
+        phone: editPhone,
+        department: editDepartment
+      };
+
+      // إضافة الباسورد فقط إذا تم إدخاله
+      if (editPassword && editPassword.trim()) {
+        payload.password = editPassword;
+      }
+
       await fetch(`/api/teachers?id=${editId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, email: editEmail, phone: editPhone, department: editDepartment })
+        body: JSON.stringify(payload)
       });
       setEditId(null);
       fetchTeachers();
@@ -357,6 +371,14 @@ export default function TeachersPage() {
                           <div className="space-y-2">
                             <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-sm" placeholder="الاسم" />
                             <input value={editEmail} onChange={e => setEditEmail(e.target.value)} className="w-full px-3 py-2 border rounded-xl text-xs" placeholder="البريد" />
+                            <input
+                              type="password"
+                              value={editPassword}
+                              onChange={e => setEditPassword(e.target.value)}
+                              className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs outline-none"
+                              placeholder="كلمة مرور جديدة (اختياري)"
+                            />
+                            <p className="text-[10px] text-amber-600 font-medium">💡 اترك فارغاً لعدم تغيير الباسورد</p>
                           </div>
                         ) : (
                           <div>
@@ -428,6 +450,14 @@ export default function TeachersPage() {
                       <div className="space-y-2">
                         <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-3 py-2 bg-white border border-green-200 rounded-xl text-sm font-bold outline-none" placeholder="الاسم" />
                         <input value={editEmail} onChange={e => setEditEmail(e.target.value)} className="w-full px-3 py-2 bg-white border border-green-200 rounded-xl text-xs outline-none" placeholder="البريد" />
+                        <input
+                          type="password"
+                          value={editPassword}
+                          onChange={e => setEditPassword(e.target.value)}
+                          className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs outline-none"
+                          placeholder="كلمة مرور جديدة (اختياري)"
+                        />
+                        <p className="text-[10px] text-amber-600 font-medium">💡 اترك فارغاً لعدم تغيير الباسورد</p>
                         <select className="w-full px-3 py-2 bg-white border border-green-200 rounded-xl text-xs outline-none text-slate-700" value={editSelectedFacultyId} onChange={e => { setEditSelectedFacultyId(e.target.value); setEditDepartment(""); }}>
                           <option value="">-- الكلية --</option>
                           {faculties.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}

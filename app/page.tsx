@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -121,8 +122,8 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <button 
-              disabled={loading} 
+            <button
+              disabled={loading}
               className="w-full bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] text-white py-3.5 rounded-xl font-bold hover:from-[#1a3a5c] hover:to-[#0f2744] transition-all shadow-lg shadow-[#0f2744]/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed relative overflow-hidden group"
             >
               <span className="absolute inset-0 bg-gradient-to-l from-[#c8a44e]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></span>

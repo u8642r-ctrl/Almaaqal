@@ -9,6 +9,7 @@ type Student = {
   email: string;
   phone: string;
   department: string;
+  stage?: string;
   created_at: string;
 };
 
@@ -25,6 +26,7 @@ export default function StudentsPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [department, setDepartment] = useState("");
+  const [stage, setStage] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [formLoading, setFormLoading] = useState(false);
@@ -34,7 +36,13 @@ export default function StudentsPage() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editDepartment, setEditDepartment] = useState("");
+  const [editStage, setEditStage] = useState("");
+  const [editPassword, setEditPassword] = useState("");
   const [editLoading, setEditLoading] = useState(false);
+
+  // حالات تسجيل الطلاب في المراحل
+  const [enrolling, setEnrolling] = useState<number | null>(null);
+  const [enrollMessage, setEnrollMessage] = useState<{ type: string; text: string } | null>(null);
 
   // حالات الكليات والأقسام
   const [faculties, setFaculties] = useState<{id: number; name: string}[]>([]);
@@ -93,14 +101,15 @@ export default function StudentsPage() {
       const res = await fetch('/api/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, department, password })
+        body: JSON.stringify({ name, email, phone, department, stage, password })
       });
-      
+
       if (res.ok) {
         setName("");
         setEmail("");
         setPhone("");
         setDepartment("");
+        setStage("");
         setPassword("");
         setSelectedFacultyId("");
         setShowForm(false);
@@ -136,12 +145,38 @@ export default function StudentsPage() {
     }
   };
 
+  // تسجيل الطالب في المراحل
+  const enrollStudent = async (studentId: number, studentName: string) => {
+    setEnrolling(studentId);
+    setEnrollMessage(null);
+    try {
+      const response = await fetch("/api/enrollments/enroll-student-all-stages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ student_id: studentId }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setEnrollMessage({ type: "success", text: `✅ تم تسجيل ${studentName} في ${result.total_enrolled} مادة` });
+      } else {
+        setEnrollMessage({ type: "error", text: `❌ فشل تسجيل ${studentName}: ${result.error}` });
+      }
+    } catch (error) {
+      setEnrollMessage({ type: "error", text: `❌ خطأ في الاتصال` });
+    } finally {
+      setEnrolling(null);
+      setTimeout(() => setEnrollMessage(null), 5000); // إخفاء الرسالة بعد 5 ثوانِ
+    }
+  };
+
   const startEdit = (student: Student) => {
     setEditId(student.id);
     setEditName(student.name);
     setEditEmail(student.email);
     setEditPhone(student.phone || "");
     setEditDepartment(student.department || "");
+    setEditStage(student.stage || "");
+    setEditPassword(""); // باسورد فارغ - سيتم تحديثه فقط إذا أدخل الأدمن قيمة جديدة
     // تحديد الكلية تلقائياً بناءً على القسم الحالي
     const dept = allDepartments.find(d => d.name === student.department);
     setEditSelectedFacultyId(dept ? String(dept.faculty_id) : "");
@@ -151,10 +186,23 @@ export default function StudentsPage() {
     if (!editName || !editEmail) return;
     setEditLoading(true);
     try {
+      const payload: any = {
+        name: editName,
+        email: editEmail,
+        phone: editPhone,
+        department: editDepartment,
+        stage: editStage
+      };
+
+      // إضافة الباسورد فقط إذا تم إدخاله
+      if (editPassword && editPassword.trim()) {
+        payload.password = editPassword;
+      }
+
       await fetch(`/api/students?id=${editId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editName, email: editEmail, phone: editPhone, department: editDepartment })
+        body: JSON.stringify(payload)
       });
       setEditId(null);
       fetchStudents();
@@ -178,9 +226,9 @@ export default function StudentsPage() {
     if (!sortConfig) return 0;
     const aValue = a[sortConfig.key];
     const bValue = b[sortConfig.key];
-    
-    if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+
+    if ((aValue ?? '') < (bValue ?? '')) return sortConfig.direction === 'asc' ? -1 : 1;
+    if ((aValue ?? '') > (bValue ?? '')) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
 
@@ -338,6 +386,13 @@ export default function StudentsPage() {
             </div>
           </div>
 
+          {/* رسالة تسجيل المراحل */}
+          {enrollMessage && (
+            <div className={`mx-6 my-4 p-4 rounded-2xl animate-fade-in-up ${enrollMessage.type === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-700" : "bg-red-50 border border-red-200 text-red-700"}`}>
+              <p className="font-bold">{enrollMessage.text}</p>
+            </div>
+          )}
+
           {/* Professional Table Design */}
           <div className="overflow-x-auto">
             {loading ? (
@@ -382,6 +437,9 @@ export default function StudentsPage() {
                     <th className="p-6 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('department')}>
                       القسم {sortConfig?.key === 'department' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
+                    <th className="p-6 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('stage')}>
+                      المرحلة {sortConfig?.key === 'stage' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th className="p-6 cursor-pointer hover:text-blue-600 transition-colors" onClick={() => handleSort('phone')}>
                       الهاتف {sortConfig?.key === 'phone' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
@@ -403,18 +461,26 @@ export default function StudentsPage() {
                         <div className="flex flex-col">
                           {editId === student.id ? (
                             <div className="space-y-2 max-w-xs">
-                              <input 
-                                value={editName} 
-                                onChange={e => setEditName(e.target.value)} 
+                              <input
+                                value={editName}
+                                onChange={e => setEditName(e.target.value)}
                                 className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all text-sm font-bold"
                                 placeholder="الاسم الكامل"
                               />
-                              <input 
-                                value={editEmail} 
-                                onChange={e => setEditEmail(e.target.value)} 
+                              <input
+                                value={editEmail}
+                                onChange={e => setEditEmail(e.target.value)}
                                 className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl outline-none focus:ring-4 focus:ring-blue-500/10 transition-all text-xs"
                                 placeholder="البريد الإلكتروني"
                               />
+                              <input
+                                type="password"
+                                value={editPassword}
+                                onChange={e => setEditPassword(e.target.value)}
+                                className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl outline-none focus:ring-4 focus:ring-amber-500/10 transition-all text-xs"
+                                placeholder="كلمة مرور جديدة (اختياري)"
+                              />
+                              <p className="text-[10px] text-amber-600 font-medium">💡 اترك الحقل فارغاً إذا كنت لا تريد تغيير كلمة المرور</p>
                             </div>
                           ) : (
                             <>
@@ -444,9 +510,31 @@ export default function StudentsPage() {
                               <option value="">-- القسم --</option>
                               {allDepartments.filter(d => String(d.faculty_id) === editSelectedFacultyId).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                             </select>
+                            <select
+                              className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/20 text-xs text-slate-700"
+                              value={editStage}
+                              onChange={e => setEditStage(e.target.value)}
+                            >
+                              <option value="">-- المرحلة --</option>
+                              <option value="1">الأولى</option>
+                              <option value="2">الثانية</option>
+                              <option value="3">الثالثة</option>
+                              <option value="4">الرابعة</option>
+                            </select>
                           </div>
                         ) : (
                           <span className="text-slate-600 font-medium text-sm">{student.department || '-'}</span>
+                        )}
+                      </td>
+                      <td className="p-6">
+                        {editId === student.id ? (
+                          <span className="text-slate-600 text-xs">
+                            {editStage ? `المرحلة ${editStage}` : '-'}
+                          </span>
+                        ) : (
+                          <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-bold">
+                            {student.stage ? `المرحلة ${student.stage}` : 'غير محددة'}
+                          </span>
                         )}
                       </td>
                       <td className="p-6">
@@ -479,8 +567,8 @@ export default function StudentsPage() {
                             </div>
                           ) : (
                             <>
-                              <button 
-                                onClick={() => startEdit(student)} 
+                              <button
+                                onClick={() => startEdit(student)}
                                 className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all"
                                 title="تعديل البيانات"
                               >
@@ -488,6 +576,20 @@ export default function StudentsPage() {
                                   <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
                                   <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
                                 </svg>
+                              </button>
+                              <button
+                                onClick={() => enrollStudent(student.id, student.name)}
+                                disabled={enrolling === student.id}
+                                className="p-3 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={enrolling === student.id ? "جاري التسجيل..." : "تسجيل في المراحل"}
+                              >
+                                {enrolling === student.id ? (
+                                  <div className="w-5 h-5 border-2 border-slate-300 border-t-green-600 rounded-full animate-spin"></div>
+                                ) : (
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                  </svg>
+                                )}
                               </button>
                               <button 
                                 onClick={() => promptDelete(student.id)} 
@@ -515,6 +617,14 @@ export default function StudentsPage() {
                       <div className="space-y-3">
                         <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="الاسم" />
                         <input value={editEmail} onChange={e => setEditEmail(e.target.value)} className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="البريد" />
+                        <input
+                          type="password"
+                          value={editPassword}
+                          onChange={e => setEditPassword(e.target.value)}
+                          className="w-full px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500/20"
+                          placeholder="كلمة مرور جديدة (اختياري)"
+                        />
+                        <p className="text-[10px] text-amber-600 font-medium">💡 اترك فارغاً لعدم تغيير الباسورد</p>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1 col-span-2">
                             <select className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none text-slate-700" value={editSelectedFacultyId} onChange={e => { setEditSelectedFacultyId(e.target.value); setEditDepartment(""); }}>
@@ -524,6 +634,13 @@ export default function StudentsPage() {
                             <select className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none text-slate-700 disabled:opacity-50" value={editDepartment} onChange={e => setEditDepartment(e.target.value)} disabled={!editSelectedFacultyId}>
                               <option value="">-- القسم --</option>
                               {allDepartments.filter(d => String(d.faculty_id) === editSelectedFacultyId).map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                            </select>
+                            <select className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none text-slate-700" value={editStage} onChange={e => setEditStage(e.target.value)}>
+                              <option value="">-- المرحلة --</option>
+                              <option value="1">الأولى</option>
+                              <option value="2">الثانية</option>
+                              <option value="3">الثالثة</option>
+                              <option value="4">الرابعة</option>
                             </select>
                           </div>
                           <input value={editPhone} onChange={e => setEditPhone(e.target.value)} className="w-full px-3 py-2 bg-white border border-blue-200 rounded-xl text-xs outline-none col-span-2" placeholder="الهاتف" />
@@ -543,6 +660,7 @@ export default function StudentsPage() {
                           <p className="text-slate-400 text-xs truncate">{student.email}</p>
                           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-[11px] text-slate-500">
                             {student.department && <span className="flex items-center gap-1"><svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" /></svg>{student.department}</span>}
+                            {student.stage && <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold">المرحلة {student.stage}</span>}
                             {student.phone && <span dir="ltr">{student.phone}</span>}
                             <span>{new Date(student.created_at).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
                           </div>
@@ -550,6 +668,20 @@ export default function StudentsPage() {
                         <div className="flex gap-1 flex-shrink-0">
                           <button onClick={() => startEdit(student)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
                             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" /></svg>
+                          </button>
+                          <button
+                            onClick={() => enrollStudent(student.id, student.name)}
+                            disabled={enrolling === student.id}
+                            className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={enrolling === student.id ? "جاري التسجيل..." : "تسجيل في المراحل"}
+                          >
+                            {enrolling === student.id ? (
+                              <div className="w-4 h-4 border-2 border-slate-300 border-t-green-600 rounded-full animate-spin"></div>
+                            ) : (
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                            )}
                           </button>
                           <button onClick={() => promptDelete(student.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
                             <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
@@ -674,6 +806,21 @@ export default function StudentsPage() {
                   value={phone}
                   onChange={e => setPhone(e.target.value)}
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-wider pr-1">المرحلة الدراسية</label>
+                <select
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-700"
+                  value={stage}
+                  onChange={e => setStage(e.target.value)}
+                  required
+                >
+                  <option value="">-- اختر المرحلة --</option>
+                  <option value="1">المرحلة الأولى</option>
+                  <option value="2">المرحلة الثانية</option>
+                  <option value="3">المرحلة الثالثة</option>
+                  <option value="4">المرحلة الرابعة</option>
+                </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">

@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     title: "جامعة المعقل",
     description: "النظام الإلكتروني الرسمي لجامعة المعقل",
     type: "website",
-    locale: "ar_IQ", // بما أننا في البصرة العظيمة 😉
+    locale: "ar_IQ", 
   },
   icons: {
     icon: "/logo.webp",

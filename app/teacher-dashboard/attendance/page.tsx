@@ -344,7 +344,7 @@ export default function TeacherAttendancePage() {
               >
                 <option value="">-- اختر مادة --</option>
                 {courses.map((c) => (
-                  <option key={c.id} value={c.id}>{c.code} - {c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -574,7 +574,6 @@ export default function TeacherAttendancePage() {
                     <tr className="text-slate-400 text-[11px] font-black uppercase tracking-[0.2em] border-b border-slate-50">
                       <th className="p-6">#</th>
                       <th className="p-6">الطالب</th>
-                      <th className="p-6">البريد</th>
                       <th className="p-6">الحالة</th>
                       <th className="p-6">وقت التسجيل</th>
                     </tr>
@@ -584,7 +583,6 @@ export default function TeacherAttendancePage() {
                       <tr key={record.id} className="hover:bg-slate-50/80 transition-all">
                         <td className="p-6 text-slate-400 font-bold">{idx + 1}</td>
                         <td className="p-6 font-bold text-slate-800">{record.student_name}</td>
-                        <td className="p-6 text-sm text-slate-500">{record.student_email}</td>
                         <td className="p-6">
                           <span className="bg-green-50 text-green-700 px-3 py-1 rounded-lg text-xs font-bold">
                             حاضر ✓
@@ -611,8 +609,7 @@ export default function TeacherAttendancePage() {
                           حاضر ✓
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>{record.student_email}</span>
+                      <div className="flex items-center justify-end text-xs text-slate-500">
                         <span>{new Date(record.recorded_at).toLocaleTimeString("ar-IQ")}</span>
                       </div>
                     </div>

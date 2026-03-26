@@ -24,13 +24,13 @@ export async function GET() {
 
     // جلب المواد المسجل فيها الطالب مع معلومات الأستاذ
     const result = await pool.query(
-      `SELECT c.id, c.name, c.code, c.description, 
+      `SELECT c.id, c.name, c.code, c.description, c.stage, c.term,
               t.name as teacher_name, e.enrolled_at
        FROM enrollments e
        JOIN courses c ON e.course_id = c.id
        LEFT JOIN teachers t ON c.teacher_id = t.id
        WHERE e.student_id = $1
-       ORDER BY e.enrolled_at DESC`,
+       ORDER BY c.stage, c.term, e.enrolled_at DESC`,
       [studentId]
     );
 
