@@ -16,6 +16,8 @@ const pool = new Pool(
 );
 
 let dbInitialized = false;
+// مفتاح لتتبع آخر وقت تم فيه تشغيل ALTER queries
+let alterQueriesRun = false;
 
 export async function initDatabase(force = false) {
   if (dbInitialized && !force) return;
@@ -173,30 +175,32 @@ export async function initDatabase(force = false) {
       )
     `);
 
-    // إضافة أعمدة جديدة إذا لم تكن موجودة (للتوافق مع قواعد بيانات سابقة)
-    const alterQueries = [
-      "ALTER TABLE students ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
-      "ALTER TABLE students ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
-      "ALTER TABLE students ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
-      "ALTER TABLE students ADD COLUMN IF NOT EXISTS accessible_stages TEXT",
-      "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
-      "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
-      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS description TEXT",
-      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS teacher_id INTEGER",
-      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
-      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS term VARCHAR(10)",
-      "ALTER TABLE courses ADD COLUMN IF NOT EXISTS department_id INTEGER",
-      "ALTER TABLE course_contents ADD COLUMN IF NOT EXISTS max_grade INTEGER DEFAULT 100",
-      "ALTER TABLE course_contents ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
-      "ALTER TABLE grades ADD COLUMN IF NOT EXISTS pass_type VARCHAR(20) DEFAULT 'first_round'",
-      "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS is_carried_over BOOLEAN DEFAULT FALSE",
-      "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS original_stage VARCHAR(10)",
-      "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'",
-      "ALTER TABLE homework_grades ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
-      "ALTER TABLE homework_grades ADD COLUMN IF NOT EXISTS file_data TEXT",
-    ];
-    for (const q of alterQueries) {
-      try { await pool.query(q); } catch { /* العمود موجود مسبقاً */ }
+    // إضافة أعمدة جديدة - تشتغل مرة واحدة فقط لكل instance
+    if (!alterQueriesRun || force) {
+      const alterQueries = [
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
+        "ALTER TABLE students ADD COLUMN IF NOT EXISTS accessible_stages TEXT",
+        "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS phone VARCHAR(20)",
+        "ALTER TABLE teachers ADD COLUMN IF NOT EXISTS department VARCHAR(100)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS description TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS teacher_id INTEGER",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS term VARCHAR(10)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS department_id INTEGER",
+        "ALTER TABLE course_contents ADD COLUMN IF NOT EXISTS max_grade INTEGER DEFAULT 100",
+        "ALTER TABLE course_contents ADD COLUMN IF NOT EXISTS stage VARCHAR(10)",
+        "ALTER TABLE grades ADD COLUMN IF NOT EXISTS pass_type VARCHAR(20) DEFAULT 'first_round'",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS is_carried_over BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS original_stage VARCHAR(10)",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'",
+        "ALTER TABLE homework_grades ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
+        "ALTER TABLE homework_grades ADD COLUMN IF NOT EXISTS file_data TEXT",
+      ];
+      // شغّل كل الـ ALTER queries بالتوازي بدل الترتيب
+      await Promise.allSettled(alterQueries.map(q => pool.query(q)));
+      alterQueriesRun = true;
     }
 
     // إضافة قيود UNIQUE إذا لم تكن موجودة

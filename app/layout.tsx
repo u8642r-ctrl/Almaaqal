@@ -57,7 +57,7 @@ export default function RootLayout({
     // suppressHydrationWarning ضروري جداً لو قررت تستخدم Dark/Light mode لاحقاً
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white text-gray-900`}
       >
         <Providers>
           <AppLayout>{children}</AppLayout>
