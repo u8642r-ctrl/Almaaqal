@@ -1,7 +1,6 @@
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
-// ── Grade label helper ──────────────────────────────────────────────────────
+// ── Grade helpers ───────────────────────────────────────────────────────────
 function getGradeLabel(value: number): string {
   if (value >= 90) return 'امتياز';
   if (value >= 80) return 'جيد جداً';
@@ -11,83 +10,111 @@ function getGradeLabel(value: number): string {
   return 'راسب';
 }
 
-function getGradeColor(value: number): [number, number, number] {
-  if (value >= 90) return [5, 150, 105];   // emerald
-  if (value >= 80) return [37, 99, 235];    // blue
-  if (value >= 70) return [79, 70, 229];    // indigo
-  if (value >= 60) return [217, 119, 6];    // amber
-  if (value >= 50) return [234, 88, 12];    // orange
-  return [220, 38, 38];                      // red
+function getGradeColor(value: number): string {
+  if (value >= 90) return '#059669';
+  if (value >= 80) return '#2563eb';
+  if (value >= 70) return '#4f46e5';
+  if (value >= 60) return '#d97706';
+  if (value >= 50) return '#ea580c';
+  return '#dc2626';
 }
 
-// reverse text for RTL rendering in jsPDF (which doesn't natively support RTL)
-function reverseText(text: string): string {
-  return text.split('').reverse().join('');
+function getGradeBg(value: number): string {
+  if (value >= 90) return '#ecfdf5';
+  if (value >= 80) return '#eff6ff';
+  if (value >= 70) return '#eef2ff';
+  if (value >= 60) return '#fffbeb';
+  if (value >= 50) return '#fff7ed';
+  return '#fef2f2';
 }
 
-// ── Shared drawing helpers ──────────────────────────────────────────────────
-function drawHeader(doc: jsPDF, title: string, subtitle: string) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-
-  // Top gradient bar
-  doc.setFillColor(15, 39, 68);
-  doc.rect(0, 0, pageWidth, 38, 'F');
-
-  // Gold accent line
-  doc.setFillColor(200, 164, 78);
-  doc.rect(0, 38, pageWidth, 3, 'F');
-
-  // University name
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.text('University Grading System', pageWidth / 2, 16, { align: 'center' });
-
-  // Title
-  doc.setFontSize(12);
-  doc.setTextColor(200, 164, 78);
-  doc.text(title, pageWidth / 2, 27, { align: 'center' });
-
-  // Subtitle
-  doc.setFontSize(9);
-  doc.setTextColor(200, 200, 200);
-  doc.text(subtitle, pageWidth / 2, 34, { align: 'center' });
+function formatDate(): string {
+  return new Date().toLocaleDateString('ar-IQ', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  });
 }
 
-function drawFooter(doc: jsPDF) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const pageCount = doc.getNumberOfPages();
+// ── Core HTML-to-PDF engine ─────────────────────────────────────────────────
+async function generatePdfFromHtml(
+  htmlContent: string,
+  orientation: 'portrait' | 'landscape',
+  fileName: string,
+  containerWidth: number = 1100
+) {
+  // Create a temporary container and attach it to the DOM
+  const container = document.createElement('div');
+  container.innerHTML = htmlContent;
+  container.style.cssText = `
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: ${containerWidth}px;
+    background: white;
+    z-index: -1;
+    font-family: Tahoma, 'Segoe UI', Arial, sans-serif;
+  `;
+  document.body.appendChild(container);
 
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
+  // Give the browser time to lay out text
+  await new Promise(r => setTimeout(r, 300));
 
-    // Footer line
-    doc.setDrawColor(200, 164, 78);
-    doc.setLineWidth(0.5);
-    doc.line(15, pageHeight - 15, pageWidth - 15, pageHeight - 15);
+  // Dynamically import html2canvas (client-side only)
+  const { default: html2canvas } = await import('html2canvas');
 
-    // Date
-    const dateStr = new Date().toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-    doc.setFontSize(7);
-    doc.setTextColor(128, 128, 128);
-    doc.text(dateStr, 15, pageHeight - 9);
+  const canvas = await html2canvas(container, {
+    scale: 2.5,
+    useCORS: true,
+    logging: false,
+    backgroundColor: '#ffffff',
+  });
 
-    // Page number
-    doc.text(`Page ${i} / ${pageCount}`, pageWidth - 15, pageHeight - 9, {
-      align: 'right',
-    });
+  document.body.removeChild(container);
+
+  // Build the PDF from the captured canvas image
+  const pdf = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+  const pw = pdf.internal.pageSize.getWidth();
+  const ph = pdf.internal.pageSize.getHeight();
+  const iw = pw;
+  const ih = (canvas.height * iw) / canvas.width;
+
+  if (ih <= ph) {
+    // Fits on one page
+    pdf.addImage(canvas.toDataURL('image/png', 0.95), 'PNG', 0, 0, iw, ih);
+  } else {
+    // Multi-page: slice the canvas into page-sized strips
+    const ratio = canvas.width / iw;
+    const pagePxH = ph * ratio;
+    let y = 0;
+    const pageCanvas = document.createElement('canvas');
+    const ctx = pageCanvas.getContext('2d')!;
+
+    while (y < canvas.height) {
+      const sliceH = Math.min(pagePxH, canvas.height - y);
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = sliceH;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+      ctx.drawImage(canvas, 0, y, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+      if (y > 0) pdf.addPage();
+      pdf.addImage(
+        pageCanvas.toDataURL('image/png', 0.95),
+        'PNG', 0, 0, iw,
+        (sliceH * iw) / canvas.width
+      );
+      y += pagePxH;
+    }
   }
+
+  pdf.save(fileName);
 }
 
 // ── Teacher PDF ─────────────────────────────────────────────────────────────
 export interface TeacherPdfStudent {
   student_name: string;
-  student_email: string;
   student_stage: string;
   is_carried_over: boolean;
   current_grade: number | null;
@@ -101,141 +128,114 @@ export interface TeacherPdfOptions {
   students: TeacherPdfStudent[];
 }
 
-export function generateTeacherGradesPdf(options: TeacherPdfOptions) {
+export async function generateTeacherGradesPdf(options: TeacherPdfOptions) {
   const { courseName, courseCode, stage, teacherName, students } = options;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
-  // Header
-  drawHeader(
-    doc,
-    `Grades Report — ${courseName}${courseCode ? ` (${courseCode})` : ''}`,
-    `Stage: ${stage}${teacherName ? `  |  Teacher: ${teacherName}` : ''}`
-  );
-
-  // Summary cards row
-  const y = 48;
-  const cardW = 55;
-  const cardH = 20;
-  const gap = 10;
-  const startX = (doc.internal.pageSize.getWidth() - (cardW * 4 + gap * 3)) / 2;
-
-  const totalStudents = students.length;
-  const gradedStudents = students.filter(s => s.current_grade !== null);
-  const passed = gradedStudents.filter(s => (s.current_grade ?? 0) >= 50);
-  const avgGrade = gradedStudents.length
-    ? (gradedStudents.reduce((s, st) => s + (st.current_grade ?? 0), 0) / gradedStudents.length).toFixed(1)
+  const total = students.length;
+  const graded = students.filter(s => s.current_grade !== null);
+  const passed = graded.filter(s => (s.current_grade ?? 0) >= 50);
+  const failed = graded.filter(s => (s.current_grade ?? 0) < 50);
+  const avg = graded.length
+    ? (graded.reduce((s, st) => s + (st.current_grade ?? 0), 0) / graded.length).toFixed(1)
     : '--';
 
-  const cards = [
-    { label: 'Total Students', value: String(totalStudents), color: [37, 99, 235] as [number, number, number] },
-    { label: 'Graded', value: String(gradedStudents.length), color: [5, 150, 105] as [number, number, number] },
-    { label: 'Passed', value: String(passed.length), color: [79, 70, 229] as [number, number, number] },
-    { label: 'Average', value: String(avgGrade), color: [200, 164, 78] as [number, number, number] },
-  ];
-
-  cards.forEach((card, idx) => {
-    const cx = startX + idx * (cardW + gap);
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
-    doc.setDrawColor(...card.color);
-    doc.setLineWidth(0.6);
-    doc.roundedRect(cx, y, cardW, cardH, 3, 3, 'S');
-    // Value
-    doc.setFontSize(14);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(...card.color);
-    doc.text(card.value, cx + cardW / 2, y + 9, { align: 'center' });
-    // Label
-    doc.setFontSize(7);
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(card.label, cx + cardW / 2, y + 16, { align: 'center' });
-  });
-
-  // Table
-  const tableHead = [['#', 'Student Name', 'Email', 'Stage', 'Grade', 'Rating', 'Status']];
-
-  const tableBody = students.map((student, idx) => {
-    const grade = student.current_grade;
+  const rows = students.map((s, i) => {
+    const grade = s.current_grade;
     const gradeStr = grade !== null ? String(grade) : '--';
-    const rating = grade !== null ? getGradeLabel(grade) : '--';
-    const status = student.is_carried_over ? 'Carried Over' : (grade !== null ? (grade >= 50 ? 'Pass' : 'Fail') : 'Not Graded');
-    return [
-      String(idx + 1),
-      student.student_name,
-      student.student_email,
-      student.student_stage,
-      gradeStr,
-      rating,
-      status,
-    ];
-  });
+    const rating = grade !== null ? getGradeLabel(grade) : 'لم يُقيّم';
+    const color = grade !== null ? getGradeColor(grade) : '#94a3b8';
+    const bg = grade !== null ? getGradeBg(grade) : '#f8fafc';
+    const status = s.is_carried_over
+      ? '<span style="color:#d97706;font-weight:bold;">محمّل</span>'
+      : grade !== null
+        ? grade >= 50
+          ? '<span style="color:#059669;font-weight:bold;">ناجح</span>'
+          : '<span style="color:#dc2626;font-weight:bold;">راسب</span>'
+        : '<span style="color:#94a3b8;">لم يُقيّم</span>';
+    const rowBg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
 
-  autoTable(doc, {
-    startY: y + cardH + 8,
-    head: tableHead,
-    body: tableBody,
-    theme: 'grid',
-    styles: {
-      fontSize: 9,
-      cellPadding: 4,
-      halign: 'center',
-      valign: 'middle',
-      lineColor: [226, 232, 240],
-      lineWidth: 0.3,
-    },
-    headStyles: {
-      fillColor: [15, 39, 68],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 9,
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252],
-    },
-    columnStyles: {
-      0: { cellWidth: 12 },
-      1: { cellWidth: 50, halign: 'left' },
-      2: { cellWidth: 55, halign: 'left' },
-      3: { cellWidth: 20 },
-      4: { cellWidth: 20 },
-      5: { cellWidth: 30 },
-      6: { cellWidth: 28 },
-    },
-    didParseCell: (data) => {
-      // Color the grade column
-      if (data.section === 'body' && data.column.index === 4) {
-        const rawGrade = students[data.row.index]?.current_grade;
-        if (rawGrade !== null && rawGrade !== undefined) {
-          data.cell.styles.textColor = getGradeColor(rawGrade);
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
-      // Color the status column
-      if (data.section === 'body' && data.column.index === 6) {
-        const rawGrade = students[data.row.index]?.current_grade;
-        if (rawGrade !== null && rawGrade !== undefined) {
-          if (rawGrade >= 50) {
-            data.cell.styles.textColor = [5, 150, 105];
-          } else {
-            data.cell.styles.textColor = [220, 38, 38];
-          }
-          data.cell.styles.fontStyle = 'bold';
-        }
-        // Carried over
-        if (students[data.row.index]?.is_carried_over) {
-          data.cell.styles.textColor = [217, 119, 6];
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
-    },
-  });
+    return `
+      <tr style="background:${rowBg};border-bottom:1px solid #e2e8f0;">
+        <td style="padding:12px 10px;text-align:center;color:#64748b;font-size:13px;">${i + 1}</td>
+        <td style="padding:12px 10px;text-align:right;font-weight:600;color:#0f172a;font-size:14px;">${s.student_name}${s.is_carried_over ? ' <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:10px;margin-right:6px;">محمّل</span>' : ''}</td>
+        <td style="padding:12px 10px;text-align:center;color:#475569;font-size:13px;">${s.student_stage}</td>
+        <td style="padding:12px 10px;text-align:center;font-weight:bold;font-size:16px;color:${color};">${gradeStr}</td>
+        <td style="padding:12px 10px;text-align:center;">
+          <span style="background:${bg};color:${color};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold;border:1px solid ${color}20;">${rating}</span>
+        </td>
+        <td style="padding:12px 10px;text-align:center;font-size:13px;">${status}</td>
+      </tr>`;
+  }).join('');
 
-  drawFooter(doc);
+  const html = `
+    <div dir="rtl" style="padding:30px 35px;font-family:Tahoma,'Segoe UI',Arial,sans-serif;color:#0f172a;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#0f2744 0%,#1a3a5c 100%);color:white;padding:28px 30px;border-radius:16px;margin-bottom:24px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-30px;left:-30px;width:120px;height:120px;background:rgba(200,164,78,0.1);border-radius:50%;"></div>
+        <div style="position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;background:rgba(200,164,78,0.08);border-radius:50%;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1 style="font-size:24px;margin:0 0 8px;font-weight:bold;">كشف درجات الطلاب</h1>
+            <div style="height:3px;width:60px;background:#c8a44e;border-radius:2px;margin-bottom:12px;"></div>
+            <p style="color:#c8a44e;margin:0 0 4px;font-size:16px;font-weight:bold;">${courseName}${courseCode ? ` (${courseCode})` : ''}</p>
+            <p style="color:rgba(255,255,255,0.7);margin:0;font-size:13px;">المرحلة الدراسية: ${stage}</p>
+            ${teacherName ? `<p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:13px;">التدريسي: ${teacherName}</p>` : ''}
+          </div>
+          <div style="text-align:left;color:rgba(255,255,255,0.6);font-size:12px;">
+            <p style="margin:0;">${formatDate()}</p>
+          </div>
+        </div>
+      </div>
 
-  // Download
-  const fileName = `Grades_${courseName.replace(/\s+/g, '_')}_Stage_${stage}.pdf`;
-  doc.save(fileName);
+      <!-- Stats -->
+      <div style="display:flex;gap:14px;margin-bottom:24px;">
+        <div style="flex:1;background:#f8fafc;border:2px solid #2563eb;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#2563eb;">${total}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">إجمالي الطلاب</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border:2px solid #059669;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#059669;">${passed.length}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">ناجح</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border:2px solid #dc2626;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#dc2626;">${failed.length}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">راسب</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border:2px solid #c8a44e;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#c8a44e;">${avg}${avg !== '--' ? '%' : ''}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">المعدل العام</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#0f2744;">
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:50px;">ت</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:right;">اسم الطالب</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:80px;">المرحلة</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:80px;">الدرجة</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:120px;">التقدير</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:100px;">الحالة</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:2px solid #c8a44e;">
+        <p style="color:#94a3b8;font-size:11px;margin:0;">تم إنشاء هذا التقرير بشكل آلي • نظام إدارة الجامعة</p>
+        <p style="color:#94a3b8;font-size:11px;margin:0;">${formatDate()}</p>
+      </div>
+    </div>
+  `;
+
+  const fileName = `كشف_درجات_${courseName.replace(/\s+/g, '_')}_المرحلة_${stage}.pdf`;
+  await generatePdfFromHtml(html, 'landscape', fileName, 1100);
 }
 
 // ── Student PDF ─────────────────────────────────────────────────────────────
@@ -250,138 +250,114 @@ export interface StudentPdfCourse {
 
 export interface StudentPdfOptions {
   studentName: string;
-  studentEmail?: string;
   currentStage: string;
   courses: StudentPdfCourse[];
   average: number;
 }
 
-export function generateStudentGradesPdf(options: StudentPdfOptions) {
-  const { studentName, studentEmail, currentStage, courses, average } = options;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageWidth = doc.internal.pageSize.getWidth();
+export async function generateStudentGradesPdf(options: StudentPdfOptions) {
+  const { studentName, currentStage, courses, average } = options;
 
-  // Header
-  drawHeader(
-    doc,
-    'Academic Transcript',
-    `Student: ${studentName}${studentEmail ? `  |  ${studentEmail}` : ''}  |  Stage: ${currentStage}`
-  );
-
-  // Summary cards
-  const y = 50;
-  const cardW = 50;
-  const cardH = 22;
-  const gap = 12;
-  const totalCards = 3;
-  const startX = (pageWidth - (cardW * totalCards + gap * (totalCards - 1))) / 2;
+  const termNames: Record<string, string> = {
+    'كورس_اول': 'الكورس الأول',
+    'كورس_ثاني': 'الكورس الثاني',
+    'fall': 'الكورس الأول',
+    'spring': 'الكورس الثاني',
+    'summer': 'الفصل الصيفي',
+  };
 
   const totalCourses = courses.length;
   const gradedCourses = courses.filter(c => c.grade !== null);
+  const passedCourses = gradedCourses.filter(c => (c.grade ?? 0) >= 50);
   const avgStr = average > 0 ? `${average.toFixed(1)}%` : '--';
 
-  const cards = [
-    { label: 'Total Courses', value: String(totalCourses), color: [37, 99, 235] as [number, number, number] },
-    { label: 'Graded', value: String(gradedCourses.length), color: [5, 150, 105] as [number, number, number] },
-    { label: 'Average', value: avgStr, color: [200, 164, 78] as [number, number, number] },
-  ];
-
-  cards.forEach((card, idx) => {
-    const cx = startX + idx * (cardW + gap);
-    doc.setFillColor(248, 250, 252);
-    doc.roundedRect(cx, y, cardW, cardH, 3, 3, 'F');
-    doc.setDrawColor(...card.color);
-    doc.setLineWidth(0.6);
-    doc.roundedRect(cx, y, cardW, cardH, 3, 3, 'S');
-    doc.setFontSize(14);
-    doc.setFont('Helvetica', 'bold');
-    doc.setTextColor(...card.color);
-    doc.text(card.value, cx + cardW / 2, y + 10, { align: 'center' });
-    doc.setFontSize(7);
-    doc.setFont('Helvetica', 'normal');
-    doc.setTextColor(100, 116, 139);
-    doc.text(card.label, cx + cardW / 2, y + 18, { align: 'center' });
-  });
-
-  // Term mapping
-  const termNames: Record<string, string> = {
-    'كورس_اول': 'First Term',
-    'كورس_ثاني': 'Second Term',
-    'fall': 'First Term',
-    'spring': 'Second Term',
-    'summer': 'Summer Term',
-  };
-
-  // Table
-  const tableHead = [['#', 'Course Name', 'Course Code', 'Term', 'Credit Hours', 'Grade', 'Rating']];
-
-  const tableBody = courses.map((course, idx) => {
-    const gradeStr = course.grade !== null ? String(course.grade) : '--';
-    const rating = course.grade !== null ? getGradeLabel(course.grade) : 'Not Graded';
-    const termKey = course.term || 'كورس_اول';
+  const rows = courses.map((c, i) => {
+    const grade = c.grade;
+    const gradeStr = grade !== null ? String(grade) : '--';
+    const rating = grade !== null ? getGradeLabel(grade) : 'لم تُرصد';
+    const color = grade !== null ? getGradeColor(grade) : '#94a3b8';
+    const bg = grade !== null ? getGradeBg(grade) : '#f8fafc';
+    const termKey = c.term || 'كورس_اول';
     const termLabel = termNames[termKey] || termKey;
-    return [
-      String(idx + 1),
-      course.name,
-      course.code,
-      termLabel,
-      String(course.credit_hours || 0),
-      gradeStr,
-      rating,
-    ];
-  });
+    const rowBg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
 
-  autoTable(doc, {
-    startY: y + cardH + 10,
-    head: tableHead,
-    body: tableBody,
-    theme: 'grid',
-    styles: {
-      fontSize: 9,
-      cellPadding: 4,
-      halign: 'center',
-      valign: 'middle',
-      lineColor: [226, 232, 240],
-      lineWidth: 0.3,
-    },
-    headStyles: {
-      fillColor: [15, 39, 68],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 9,
-    },
-    alternateRowStyles: {
-      fillColor: [248, 250, 252],
-    },
-    columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 45, halign: 'left' },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 28 },
-      4: { cellWidth: 22 },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 25 },
-    },
-    didParseCell: (data) => {
-      if (data.section === 'body' && data.column.index === 5) {
-        const rawGrade = courses[data.row.index]?.grade;
-        if (rawGrade !== null && rawGrade !== undefined) {
-          data.cell.styles.textColor = getGradeColor(rawGrade);
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
-      if (data.section === 'body' && data.column.index === 6) {
-        const rawGrade = courses[data.row.index]?.grade;
-        if (rawGrade !== null && rawGrade !== undefined) {
-          data.cell.styles.textColor = getGradeColor(rawGrade);
-          data.cell.styles.fontStyle = 'bold';
-        }
-      }
-    },
-  });
+    return `
+      <tr style="background:${rowBg};border-bottom:1px solid #e2e8f0;">
+        <td style="padding:12px 10px;text-align:center;color:#64748b;font-size:13px;">${i + 1}</td>
+        <td style="padding:12px 10px;text-align:right;font-weight:600;color:#0f172a;font-size:14px;">${c.name}</td>
+        <td style="padding:12px 10px;text-align:center;color:#475569;font-size:12px;">${c.code}</td>
+        <td style="padding:12px 10px;text-align:center;color:#475569;font-size:13px;">${termLabel}</td>
+        <td style="padding:12px 10px;text-align:center;color:#475569;font-size:13px;">${c.credit_hours || 0}</td>
+        <td style="padding:12px 10px;text-align:center;font-weight:bold;font-size:16px;color:${color};">${gradeStr}</td>
+        <td style="padding:12px 10px;text-align:center;">
+          <span style="background:${bg};color:${color};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold;border:1px solid ${color}20;">${rating}</span>
+        </td>
+      </tr>`;
+  }).join('');
 
-  drawFooter(doc);
+  const html = `
+    <div dir="rtl" style="padding:30px 35px;font-family:Tahoma,'Segoe UI',Arial,sans-serif;color:#0f172a;">
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#0f2744 0%,#1a3a5c 100%);color:white;padding:28px 30px;border-radius:16px;margin-bottom:24px;position:relative;overflow:hidden;">
+        <div style="position:absolute;top:-30px;left:-30px;width:120px;height:120px;background:rgba(200,164,78,0.1);border-radius:50%;"></div>
+        <div style="position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;background:rgba(200,164,78,0.08);border-radius:50%;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <h1 style="font-size:24px;margin:0 0 8px;font-weight:bold;">السجل الأكاديمي</h1>
+            <div style="height:3px;width:60px;background:#c8a44e;border-radius:2px;margin-bottom:12px;"></div>
+            <p style="color:#c8a44e;margin:0 0 4px;font-size:16px;font-weight:bold;">${studentName}</p>
+            <p style="color:rgba(255,255,255,0.7);margin:0;font-size:13px;">المرحلة الدراسية: ${currentStage}</p>
+          </div>
+          <div style="text-align:left;color:rgba(255,255,255,0.6);font-size:12px;">
+            <p style="margin:0;">${formatDate()}</p>
+          </div>
+        </div>
+      </div>
 
-  const fileName = `Transcript_${studentName.replace(/\s+/g, '_')}.pdf`;
-  doc.save(fileName);
+      <!-- Stats -->
+      <div style="display:flex;gap:14px;margin-bottom:24px;">
+        <div style="flex:1;background:#f8fafc;border:2px solid #2563eb;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#2563eb;">${totalCourses}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">المواد المسجلة</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border:2px solid #059669;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#059669;">${passedCourses.length}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">المواد المرصودة</div>
+        </div>
+        <div style="flex:1;background:#f8fafc;border:2px solid #c8a44e;border-radius:14px;padding:18px 10px;text-align:center;">
+          <div style="font-size:28px;font-weight:bold;color:#c8a44e;">${avgStr}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">المعدل العام</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <table style="width:100%;border-collapse:collapse;">
+          <thead>
+            <tr style="background:#0f2744;">
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:40px;">ت</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:right;">اسم المادة</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:90px;">الرمز</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:110px;">الكورس</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:70px;">الوحدات</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:70px;">الدرجة</th>
+              <th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:110px;">التقدير</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:2px solid #c8a44e;">
+        <p style="color:#94a3b8;font-size:11px;margin:0;">تم إنشاء هذا التقرير بشكل آلي • نظام إدارة الجامعة</p>
+        <p style="color:#94a3b8;font-size:11px;margin:0;">${formatDate()}</p>
+      </div>
+    </div>
+  `;
+
+  const fileName = `السجل_الاكاديمي_${studentName.replace(/\s+/g, '_')}.pdf`;
+  await generatePdfFromHtml(html, 'portrait', fileName, 800);
 }

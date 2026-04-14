@@ -439,18 +439,17 @@ function EvaluationView({
 }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async () => {
     setIsGeneratingPdf(true);
     try {
       const pdfStudents: TeacherPdfStudent[] = courseStudentsData.students.map(s => ({
         student_name: s.student_name,
-        student_email: s.student_email,
         student_stage: s.student_stage,
         is_carried_over: s.is_carried_over,
         current_grade: s.current_grade,
       }));
 
-      generateTeacherGradesPdf({
+      await generateTeacherGradesPdf({
         courseName: courseStudentsData.course.name,
         courseCode: courseStudentsData.course.code,
         stage: courseStudentsData.course.stage,

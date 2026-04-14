@@ -207,7 +207,7 @@ export default function MyGradesPage() {
         {/* Download PDF Button */}
         <div className="flex justify-center mb-8 animate-fade-in-up stagger-1">
           <button
-            onClick={() => {
+            onClick={async () => {
               setIsGeneratingPdf(true);
               try {
                 const pdfCourses: StudentPdfCourse[] = evaluatedCourses.map(c => ({
@@ -219,9 +219,8 @@ export default function MyGradesPage() {
                   grade: typeof c.currentGradeValue === 'number' ? c.currentGradeValue : null,
                 }));
 
-                generateStudentGradesPdf({
-                  studentName: session?.user?.name || 'Student',
-                  studentEmail: session?.user?.email || undefined,
+                await generateStudentGradesPdf({
+                  studentName: session?.user?.name || 'طالب',
                   currentStage: highestStage?.stage || '-',
                   courses: pdfCourses,
                   average: totalAverage,
