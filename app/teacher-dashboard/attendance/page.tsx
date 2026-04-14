@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { QRCodeSVG } from "qrcode.react";
+import { generateAttendancePdf } from "@/lib/generateGradesPdf";
 
 type Course = { id: number; name: string; code: string };
 type LectureSession = {
@@ -156,31 +157,25 @@ export default function TeacherAttendancePage() {
     finally { setHistoryLoading(false); }
   };
 
-  // Download CSV with UTF-8 BOM (displays Arabic correctly in Excel)
-  const downloadCSV = () => {
+  // Download PDF
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const downloadPdf = async () => {
     if (historyRecords.length === 0) return;
     const courseName = courses.find(c => c.id === historyCourse)?.name || "المادة";
-    const headers = ["#", "اسم الطالب", "الحالة", "تاريخ الحضور", "وقت التسجيل"];
-    const rows = historyRecords.map((r, idx) => [
-      String(idx + 1),
-      r.student_name,
-      r.status === "present" ? "حاضر" : "غائب",
-      historyDate,
-      new Date(r.recorded_at).toLocaleTimeString("ar-IQ"),
-    ]);
-    const BOM = "\uFEFF";
-    const csvContent = BOM + [headers, ...rows]
-      .map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `سجل_الحضور_${courseName}_${historyDate}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    setIsGeneratingPdf(true);
+    try {
+      await generateAttendancePdf({
+        courseName,
+        date: historyDate,
+        records: historyRecords.map(r => ({
+          student_name: r.student_name,
+          status: r.status,
+          recorded_at: r.recorded_at,
+        })),
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
   };
 
   const startSession = async () => {
@@ -565,13 +560,18 @@ export default function TeacherAttendancePage() {
                     </span>
                   </div>
                   <button
-                    onClick={downloadCSV}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#059669] hover:bg-[#047857] text-white font-bold rounded-xl text-sm transition-all hover:shadow-md active:scale-95"
+                    onClick={downloadPdf}
+                    disabled={isGeneratingPdf}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#0f2744] hover:bg-[#1a3a5c] text-white font-bold rounded-xl text-sm transition-all hover:shadow-md active:scale-95 disabled:opacity-60"
                   >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    تنزيل Excel / CSV
+                    {isGeneratingPdf ? (
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    )}
+                    {isGeneratingPdf ? "جاري الإنشاء..." : "تنزيل PDF"}
                   </button>
                 </div>
 

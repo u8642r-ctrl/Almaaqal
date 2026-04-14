@@ -346,3 +346,35 @@ export async function generateStudentGradesPdf(options: StudentPdfOptions) {
   const fileName = `السجل_الاكاديمي_${studentName.replace(/\s+/g, '_')}.pdf`;
   await generatePdfFromHtml(html, 'portrait', fileName, 800);
 }
+
+// ── Attendance PDF ───────────────────────────────────────────────────────────
+export interface AttendanceRecordPdf {
+  student_name: string;
+  status: string;
+  recorded_at: string;
+}
+
+export interface AttendancePdfOptions {
+  courseName: string;
+  date: string;
+  records: AttendanceRecordPdf[];
+}
+
+export async function generateAttendancePdf(options: AttendancePdfOptions) {
+  const { courseName, date, records } = options;
+  const presentCount = records.filter(r => r.status === 'present').length;
+  const absentCount = records.length - presentCount;
+  const formattedDate = new Date(date).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  const rows = records.map((r, i) => {
+    const rowBg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+    const isPresent = r.status === 'present';
+    const statusColor = isPresent ? '#059669' : '#dc2626';
+    const statusBg = isPresent ? '#ecfdf5' : '#fef2f2';
+    const statusText = isPresent ? 'حاضر ✓' : 'غائب';
+    const time = new Date(r.recorded_at).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' });
+    return `<tr style="background:${rowBg};border-bottom:1px solid #e2e8f0;"><td style="padding:12px 10px;text-align:center;color:#64748b;font-size:14px;">${i + 1}</td><td style="padding:12px 10px;text-align:right;font-weight:600;color:#0f172a;font-size:15px;">${r.student_name}</td><td style="padding:12px 10px;text-align:center;"><span style="background:${statusBg};color:${statusColor};padding:4px 14px;border-radius:20px;font-size:13px;font-weight:bold;">${statusText}</span></td><td style="padding:12px 10px;text-align:center;color:#64748b;font-size:13px;">${time}</td></tr>`;
+  }).join('');
+  const html = `<div dir="rtl" style="padding:30px 35px;font-family:Tahoma,'Segoe UI',Arial,sans-serif;color:#0f172a;"><div style="background:linear-gradient(135deg,#0f2744 0%,#1a3a5c 100%);color:white;padding:28px 30px;border-radius:16px;margin-bottom:24px;"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><h1 style="font-size:24px;margin:0 0 8px;font-weight:bold;">سجل الحضور</h1><div style="height:3px;width:60px;background:#c8a44e;border-radius:2px;margin-bottom:12px;"></div><p style="color:#c8a44e;margin:0 0 4px;font-size:16px;font-weight:bold;">${courseName}</p><p style="color:rgba(255,255,255,0.7);margin:0;font-size:13px;">${formattedDate}</p></div><div style="text-align:left;color:rgba(255,255,255,0.6);font-size:12px;"><p style="margin:0;">تاريخ الطباعة</p></div></div></div><div style="display:flex;gap:14px;margin-bottom:24px;"><div style="flex:1;background:#f8fafc;border:2px solid #2563eb;border-radius:14px;padding:18px 10px;text-align:center;"><div style="font-size:28px;font-weight:bold;color:#2563eb;">${records.length}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">إجمالي الطلاب</div></div><div style="flex:1;background:#f8fafc;border:2px solid #059669;border-radius:14px;padding:18px 10px;text-align:center;"><div style="font-size:28px;font-weight:bold;color:#059669;">${presentCount}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">حاضر</div></div><div style="flex:1;background:#f8fafc;border:2px solid #dc2626;border-radius:14px;padding:18px 10px;text-align:center;"><div style="font-size:28px;font-weight:bold;color:#dc2626;">${absentCount}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">غائب</div></div></div><div style="border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;"><table style="width:100%;border-collapse:collapse;"><thead><tr style="background:#0f2744;"><th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:50px;">ت</th><th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:right;">اسم الطالب</th><th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:120px;">الحالة</th><th style="padding:14px 10px;color:white;font-size:13px;font-weight:bold;text-align:center;width:110px;">وقت التسجيل</th></tr></thead><tbody>${rows}</tbody></table></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:2px solid #c8a44e;"><p style="color:#94a3b8;font-size:11px;margin:0;">تم إنشاء هذا التقرير بشكل آلي • نظام إدارة الجامعة</p></div></div>`;
+  const fileName = `سجل_الحضور_${courseName.replace(/\s+/g, '_')}_${date}.pdf`;
+  await generatePdfFromHtml(html, 'portrait', fileName, 900);
+}
