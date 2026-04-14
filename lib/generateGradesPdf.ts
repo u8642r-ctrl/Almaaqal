@@ -169,7 +169,7 @@ export async function generateTeacherGradesPdf(options: TeacherPdfOptions) {
       <tr style="background:${rowBg};border-bottom:1px solid #e2e8f0;">
         <td style="padding:12px 10px;text-align:center;color:#64748b;font-size:13px;">${i + 1}</td>
         <td style="padding:12px 10px;text-align:right;font-weight:600;color:#0f172a;font-size:14px;">${s.student_name}${s.is_carried_over ? ' <span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:10px;font-size:10px;margin-right:6px;">محمّل</span>' : ''}</td>
-        <td style="padding:12px 10px;text-align:center;color:#475569;font-size:13px;">${s.student_stage}</td>
+        <td style="padding:12px 10px;text-align:center;color:#475569;font-size:13px;">${stage}</td>
         <td style="padding:12px 10px;text-align:center;font-weight:bold;font-size:16px;color:${color};">${gradeStr}</td>
         <td style="padding:12px 10px;text-align:center;">
           <span style="background:${bg};color:${color};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold;border:1px solid ${color}20;">${rating}</span>
