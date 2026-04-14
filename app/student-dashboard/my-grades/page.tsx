@@ -378,10 +378,28 @@ export default function MyGradesPage() {
                                     معلومات المادة
                                   </h4>
                                   <ul className="space-y-2 text-sm text-slate-600 bg-white p-4 rounded-xl border border-slate-100">
-                                    <li className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-400">المرحلة:</span> <span className="font-bold">{course.stage || (highestStage ? highestStage.stage : '-')}</span></li>
-                                    <li className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-400">الوحدات:</span> <span className="font-bold">{course.credit_hours || 0}</span></li>
-                                    <li className="flex justify-between border-b border-slate-50 pb-2"><span className="text-slate-400">النظري:</span> <span className="font-bold">{course.theoretical_hours || 0}</span></li>
-                                    <li className="flex justify-between pt-1"><span className="text-slate-400">العملي:</span> <span className="font-bold">{course.practical_hours || 0}</span></li>
+                                    <li className="flex justify-between border-b border-slate-50 pb-2">
+                                      <span className="text-slate-400">المرحلة:</span>
+                                      <span className="font-bold">
+                                        {(() => {
+                                          const stageNum = course.stage || (highestStage ? highestStage.stage : '');
+                                          const stageNames: Record<string, string> = { '1': 'الأولى', '2': 'الثانية', '3': 'الثالثة', '4': 'الرابعة' };
+                                          return stageNames[stageNum] || stageNum || '-';
+                                        })()}
+                                      </span>
+                                    </li>
+                                    <li className="flex justify-between pt-1">
+                                      <span className="text-slate-400">الكورس:</span>
+                                      <span className="font-bold">
+                                        {(() => {
+                                          const t = course.term || '';
+                                          if (t === 'كورس_اول' || t === 'fall') return 'الأول';
+                                          if (t === 'كورس_ثاني' || t === 'spring') return 'الثاني';
+                                          if (t === 'summer') return 'الصيفي';
+                                          return 'الأول';
+                                        })()}
+                                      </span>
+                                    </li>
                                   </ul>
                                 </div>
                                 
