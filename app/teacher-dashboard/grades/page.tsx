@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { generateTeacherGradesPdf, type TeacherPdfStudent } from "@/lib/generateGradesPdf";
+import { generateTeacherGradesPdf, type TeacherPdfStudent, getTermDisplayName } from "@/lib/generateGradesPdf";
 
 interface CourseContent {
   content_id: number;
@@ -438,8 +438,10 @@ function EvaluationView({
   deleteGrade: (gradeId: number) => void;
 }) {
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showTermModal, setShowTermModal] = useState(false);
 
-  const handleDownloadPdf = async () => {
+  const downloadPdfForTerm = async (termKey: string) => {
+    setShowTermModal(false);
     setIsGeneratingPdf(true);
     try {
       const pdfStudents: TeacherPdfStudent[] = courseStudentsData.students.map(s => ({
@@ -451,8 +453,8 @@ function EvaluationView({
 
       await generateTeacherGradesPdf({
         courseName: courseStudentsData.course.name,
-        courseCode: courseStudentsData.course.code,
         stage: courseStudentsData.course.stage,
+        termLabel: getTermDisplayName(termKey),
         students: pdfStudents,
       });
     } finally {
@@ -515,6 +517,44 @@ function EvaluationView({
 
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      {/* Term Selection Modal */}
+      {showTermModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowTermModal(false)} />
+          <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in-up">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-black text-gray-900">اختر الكورس</h3>
+              <p className="text-sm text-gray-500 mt-1">حدد الكورس الذي تريد تنزيل كشف درجاته</p>
+            </div>
+            <div className="space-y-3">
+              {(['كورس_اول', 'fall', 'كورس_ثاني', 'spring', 'summer'] as const).map(termKey => (
+                <button
+                  key={termKey}
+                  onClick={() => downloadPdfForTerm(termKey)}
+                  className="w-full flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gradient-to-l hover:from-blue-600 hover:to-indigo-600 hover:text-white border-2 border-gray-200 hover:border-blue-500 rounded-2xl font-bold text-gray-800 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group"
+                >
+                  <span className="text-base">{getTermDisplayName(termKey)}</span>
+                  <svg className="w-5 h-5 text-gray-400 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowTermModal(false)}
+              className="w-full mt-4 py-3 text-gray-500 hover:text-gray-700 font-semibold text-sm transition-colors"
+            >
+              إلغاء
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -527,7 +567,7 @@ function EvaluationView({
             </p>
           </div>
           <button
-            onClick={handleDownloadPdf}
+            onClick={() => setShowTermModal(true)}
             disabled={isGeneratingPdf}
             className="group flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 rounded-xl text-white font-semibold text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
           >

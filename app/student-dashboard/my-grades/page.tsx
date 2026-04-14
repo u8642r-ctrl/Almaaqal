@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { generateStudentGradesPdf, type StudentPdfCourse } from "@/lib/generateGradesPdf";
+import { generateStudentGradesPdf, type StudentPdfCourse, getTermDisplayName } from "@/lib/generateGradesPdf";
 
 type Grade = {
   id: number | string;
@@ -49,6 +49,7 @@ export default function MyGradesPage() {
   const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
   const CURRENT_YEAR = "2025-2026";
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showTermModal, setShowTermModal] = useState(false);
 
   useEffect(() => {
     if (!session?.user?.email) return;
@@ -207,28 +208,7 @@ export default function MyGradesPage() {
         {/* Download PDF Button */}
         <div className="flex justify-center mb-8 animate-fade-in-up stagger-1">
           <button
-            onClick={async () => {
-              setIsGeneratingPdf(true);
-              try {
-                const pdfCourses: StudentPdfCourse[] = evaluatedCourses.map(c => ({
-                  name: c.name,
-                  code: c.code,
-                  stage: c.stage || highestStage?.stage || '',
-                  term: c.term,
-                  credit_hours: c.credit_hours,
-                  grade: typeof c.currentGradeValue === 'number' ? c.currentGradeValue : null,
-                }));
-
-                await generateStudentGradesPdf({
-                  studentName: session?.user?.name || 'طالب',
-                  currentStage: highestStage?.stage || '-',
-                  courses: pdfCourses,
-                  average: totalAverage,
-                });
-              } finally {
-                setTimeout(() => setIsGeneratingPdf(false), 1000);
-              }
-            }}
+            onClick={() => setShowTermModal(true)}
             disabled={isGeneratingPdf}
             className="group flex items-center gap-3 px-7 py-3.5 bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] text-white font-bold text-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-[#c8a44e]/30 hover:border-[#c8a44e]/60 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
           >
@@ -251,6 +231,79 @@ export default function MyGradesPage() {
             )}
           </button>
         </div>
+
+        {/* Term Selection Modal */}
+        {showTermModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" dir="rtl">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowTermModal(false)} />
+            <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-8 animate-fade-in-up">
+              {/* Modal Header */}
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#0f2744] to-[#1a3a5c] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                  <svg className="w-8 h-8 text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-black text-[#0f2744]">اختر الكورس</h3>
+                <p className="text-sm text-slate-500 mt-1">حدد الكورس الذي تريد تنزيل درجاته</p>
+              </div>
+
+              {/* Term Buttons */}
+              <div className="space-y-3">
+                {sortedTerms.map(termKey => {
+                  const termCoursesForKey = groupedCourses[termKey] || [];
+                  const termLabel = getTermDisplayName(termKey);
+                  return (
+                    <button
+                      key={termKey}
+                      onClick={async () => {
+                        setShowTermModal(false);
+                        setIsGeneratingPdf(true);
+                        try {
+                          const pdfCourses: StudentPdfCourse[] = termCoursesForKey.map(c => ({
+                            name: c.name,
+                            stage: c.stage || highestStage?.stage || '',
+                            grade: typeof c.currentGradeValue === 'number' ? c.currentGradeValue : null,
+                          }));
+                          const termGraded = pdfCourses.filter(c => c.grade !== null);
+                          const termAvg = termGraded.length
+                            ? termGraded.reduce((s, c) => s + (c.grade as number), 0) / termGraded.length
+                            : 0;
+                          await generateStudentGradesPdf({
+                            studentName: session?.user?.name || 'طالب',
+                            currentStage: highestStage?.stage || '-',
+                            termLabel,
+                            courses: pdfCourses,
+                            average: termAvg,
+                          });
+                        } finally {
+                          setTimeout(() => setIsGeneratingPdf(false), 1000);
+                        }
+                      }}
+                      className="w-full flex items-center justify-between px-5 py-4 bg-gradient-to-l from-[#f8fafc] to-[#f1f5f9] hover:from-[#0f2744] hover:to-[#1a3a5c] hover:text-white border-2 border-slate-200 hover:border-[#c8a44e]/40 rounded-2xl font-bold text-[#0f2744] transition-all duration-200 hover:scale-[1.02] hover:shadow-lg group"
+                    >
+                      <span className="text-base">{termLabel}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-400 group-hover:text-white/70">{termCoursesForKey.length} مادة</span>
+                        <svg className="w-5 h-5 text-slate-400 group-hover:text-[#c8a44e]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Cancel */}
+              <button
+                onClick={() => setShowTermModal(false)}
+                className="w-full mt-4 py-3 text-slate-500 hover:text-slate-700 font-semibold text-sm transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Grades Accordion */}
         {evaluatedCourses.length === 0 ? (
@@ -302,7 +355,6 @@ export default function MyGradesPage() {
                               </div>
                               <div>
                                 <h3 className="text-base font-bold text-[#0f2744]">{course.name}</h3>
-                                <p className="text-xs text-slate-400 uppercase">{course.code}</p>
                               </div>
                             </div>
                             
