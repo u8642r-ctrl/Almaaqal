@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { generateTeacherGradesPdf, type TeacherPdfStudent } from "@/lib/generateGradesPdf";
 
 interface CourseContent {
   content_id: number;
@@ -436,6 +437,29 @@ function EvaluationView({
   saveGrade: (studentId: number, courseId: number, grade: number) => void;
   deleteGrade: (gradeId: number) => void;
 }) {
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleDownloadPdf = () => {
+    setIsGeneratingPdf(true);
+    try {
+      const pdfStudents: TeacherPdfStudent[] = courseStudentsData.students.map(s => ({
+        student_name: s.student_name,
+        student_email: s.student_email,
+        student_stage: s.student_stage,
+        is_carried_over: s.is_carried_over,
+        current_grade: s.current_grade,
+      }));
+
+      generateTeacherGradesPdf({
+        courseName: courseStudentsData.course.name,
+        courseCode: courseStudentsData.course.code,
+        stage: courseStudentsData.course.stage,
+        students: pdfStudents,
+      });
+    } finally {
+      setTimeout(() => setIsGeneratingPdf(false), 1000);
+    }
+  };
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [savedGrades, setSavedGrades] = useState<Set<string>>(new Set());
 
@@ -494,12 +518,35 @@ function EvaluationView({
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6">
-        <h2 className="text-xl font-semibold">
-          {`تقييم المادة: ${courseStudentsData.course.name}`}
-        </h2>
-        <p className="text-blue-100 mt-1">
-          المرحلة {courseStudentsData.course.stage}
-        </p>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">
+              {`تقييم المادة: ${courseStudentsData.course.name}`}
+            </h2>
+            <p className="text-blue-100 mt-1">
+              المرحلة {courseStudentsData.course.stage}
+            </p>
+          </div>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="group flex items-center gap-2 px-5 py-2.5 bg-white/15 hover:bg-white/25 backdrop-blur-sm border border-white/30 rounded-xl text-white font-semibold text-sm transition-all duration-300 hover:scale-105 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                <span>جاري التنزيل...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>تنزيل PDF</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Students list */}

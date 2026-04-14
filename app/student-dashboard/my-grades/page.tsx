@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { generateStudentGradesPdf, type StudentPdfCourse } from "@/lib/generateGradesPdf";
 
 type Grade = {
   id: number | string;
@@ -47,6 +48,7 @@ export default function MyGradesPage() {
   const [expandedTerms, setExpandedTerms] = useState<Set<string>>(new Set(['كورس_اول', 'fall', 'الكورس الأول']));
   const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
   const CURRENT_YEAR = "2025-2026";
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
 
   useEffect(() => {
     if (!session?.user?.email) return;
@@ -200,6 +202,55 @@ export default function MyGradesPage() {
               <p className="text-3xl font-black text-[#0f2744]">{totalAverage > 0 ? `%${totalAverage.toFixed(1)}` : '--'}</p>
             </div>
           </div>
+        </div>
+
+        {/* Download PDF Button */}
+        <div className="flex justify-center mb-8 animate-fade-in-up stagger-1">
+          <button
+            onClick={() => {
+              setIsGeneratingPdf(true);
+              try {
+                const pdfCourses: StudentPdfCourse[] = evaluatedCourses.map(c => ({
+                  name: c.name,
+                  code: c.code,
+                  stage: c.stage || highestStage?.stage || '',
+                  term: c.term,
+                  credit_hours: c.credit_hours,
+                  grade: typeof c.currentGradeValue === 'number' ? c.currentGradeValue : null,
+                }));
+
+                generateStudentGradesPdf({
+                  studentName: session?.user?.name || 'Student',
+                  studentEmail: session?.user?.email || undefined,
+                  currentStage: highestStage?.stage || '-',
+                  courses: pdfCourses,
+                  average: totalAverage,
+                });
+              } finally {
+                setTimeout(() => setIsGeneratingPdf(false), 1000);
+              }
+            }}
+            disabled={isGeneratingPdf}
+            className="group flex items-center gap-3 px-7 py-3.5 bg-gradient-to-l from-[#0f2744] to-[#1a3a5c] hover:from-[#1a3a5c] hover:to-[#0f2744] text-white font-bold text-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 border border-[#c8a44e]/30 hover:border-[#c8a44e]/60 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            {isGeneratingPdf ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30 border-t-white"></div>
+                <span>جاري إنشاء الملف...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>تنزيل سجل الدرجات PDF</span>
+                <div className="w-px h-4 bg-white/20"></div>
+                <svg className="w-4 h-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Grades Accordion */}
