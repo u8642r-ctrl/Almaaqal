@@ -224,7 +224,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1 md:mr-[280px] mt-14 md:mt-0 transition-all duration-300">
+      <main className="flex-1 md:mr-[280px] mt-14 md:mt-0 min-w-0 max-w-full overflow-x-hidden">
         {children}
       </main>
     </div>

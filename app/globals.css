@@ -25,6 +25,360 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* =========================================
+   القواعد الأساسية للتجاوب مع الهاتف
+   ========================================= */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  /* منع التمرير الأفقي على مستوى الصفحة كاملة */
+  overflow-x: hidden;
+  /* تصحيح حجم الخط في iOS عند تدوير الشاشة */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  /* منع أي عنصر من تجاوز عرض الشاشة */
+  overflow-x: hidden;
+  /* عرض كامل الشاشة دائماً */
+  width: 100%;
+  min-width: 0;
+}
+
+/* =========================================
+   منع العناصر من تجاوز الشاشة
+   ========================================= */
+
+/* كل عنصر يجب أن يبقى ضمن حدود الشاشة */
+img,
+video,
+canvas,
+svg,
+iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+/* منع النصوص الطويلة من كسر التخطيط */
+p, span, div, a, label, td, th, li {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* =========================================
+   تحسينات الجداول على الموبايل
+   ========================================= */
+table {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* أي كونتينر يحتوي جدول يجب أن يكون scrollable */
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* =========================================
+   الانيميشنات
+   ========================================= */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(200, 164, 78, 0.15); }
+  50% { box-shadow: 0 0 40px rgba(200, 164, 78, 0.3); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s ease-out both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* =========================================
+   كلاسات البطاقات والعناصر
+   ========================================= */
+.card-pro {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* منع البطاقة من تجاوز الشاشة */
+  max-width: 100%;
+  min-width: 0;
+}
+
+.card-pro:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.04);
+  transform: translateY(-2px);
+}
+
+/* تعطيل hover animation على الموبايل لتحسين الأداء */
+@media (hover: none) {
+  .card-pro:hover {
+    transform: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+  }
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* =========================================
+   شريط التمرير
+   ========================================= */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+::selection {
+  background-color: var(--accent);
+  color: #ffffff;
+}
+
+/* =========================================
+   تأخيرات الانيميشن
+   ========================================= */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* =========================================
+   نمط الخلفية
+   ========================================= */
+.bg-pattern {
+  background-image: radial-gradient(circle at 1px 1px, rgba(15, 39, 68, 0.03) 1px, transparent 0);
+  background-size: 40px 40px;
+}
+
+/* =========================================
+   الجداول الاحترافية
+   ========================================= */
+.table-row-pro {
+  transition: all 0.2s ease;
+}
+
+.table-row-pro:hover {
+  background-color: rgba(37, 99, 235, 0.03);
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 0.5rem;
+}
+
+/* =========================================
+   إصلاحات الموبايل الشاملة
+   ========================================= */
+@media (max-width: 768px) {
+
+  /* إخفاء الدوائر الزخرفية الكبيرة التي تسبب overflow */
+  .blur-3xl {
+    display: none !important;
+  }
+
+  /* ضمان أن كل الكونتينرات تبقى ضمن الشاشة */
+  .max-w-6xl,
+  .max-w-5xl,
+  .max-w-4xl,
+  .max-w-3xl,
+  .max-w-2xl,
+  .max-w-xl,
+  .max-w-lg,
+  .max-w-md,
+  .max-w-sm {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* الـ main content يجب أن يبقى ضمن الشاشة */
+  main {
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* منع أي عنصر absolute من التسبب في overflow */
+  .absolute {
+    max-width: 100% !important;
+  }
+
+  /* الزخارف المطلقة داخل البطاقات */
+  .card-pro .absolute {
+    overflow: hidden;
+  }
+
+  /* تحسين أزرار الـ toast على الموبايل */
+  .fixed.bottom-6.left-6 {
+    left: 1rem !important;
+    right: 1rem !important;
+    width: auto !important;
+    text-align: center;
+  }
+
+  /* تكبير حجم أهداف اللمس (التوصية: 44px على الأقل) */
+  button, a, [role="button"] {
+    min-height: 36px;
+  }
+
+  /* تحسين إدخالات النصوص على iOS */
+  input, textarea, select {
+    font-size: 16px !important; /* يمنع iOS من التكبير التلقائي */
+    max-width: 100% !important;
+  }
+
+  /* إخفاء overflow أفقي على مستوى كل العناصر الكبيرة */
+  section, article, aside, nav {
+    max-width: 100% !important;
+    overflow-x: hidden;
+  }
+
+  /* ضمان أن الـ grid لا يتجاوز الشاشة */
+  .grid {
+    min-width: 0;
+  }
+
+  /* تقليل padding الكبير */
+  .p-10 { padding: 1.25rem !important; }
+  .p-8  { padding: 1rem !important; }
+  .px-10 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+  .px-8  { padding-left: 1rem !important; padding-right: 1rem !important; }
+
+  /* الـ flex containers يجب أن تلتزم بالحدود */
+  .flex {
+    min-width: 0;
+  }
+
+  /* تصغير النصوص الكبيرة جداً */
+  .text-4xl { font-size: 1.75rem !important; line-height: 1.2 !important; }
+  .text-5xl { font-size: 2rem !important; line-height: 1.2 !important; }
+  .text-6xl { font-size: 2.25rem !important; line-height: 1.15 !important; }
+
+  /* النصوص المقطوعة في الجداول */
+  td, th {
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* السماح للنص بالالتفاف في الخلايا التي تحتوي معلومات مركبة */
+  td .flex-col,
+  td .space-y-1 {
+    white-space: normal !important;
+  }
+}
+
+/* =========================================
+   إصلاحات الشاشات الصغيرة جداً (< 380px)
+   ========================================= */
+@media (max-width: 380px) {
+  /* تصغير إضافي للشاشات الصغيرة جداً */
+  .text-2xl { font-size: 1.25rem !important; }
+  .text-3xl { font-size: 1.5rem !important; }
+  
+  /* تقليل الـ gap */
+  .gap-4 { gap: 0.625rem !important; }
+  .gap-5 { gap: 0.75rem !important; }
+  .gap-6 { gap: 1rem !important; }
+
+  /* الأزرار تأخذ عرض كامل */
+  .grid-cols-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* =========================================
+   تحسينات الطباعة
+   ========================================= */
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; }
+}
+
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 html {
   scroll-behavior: smooth;
 }
