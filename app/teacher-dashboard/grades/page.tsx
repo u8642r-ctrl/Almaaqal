@@ -615,7 +615,7 @@ function EvaluationView({
                     ? 'border-orange-300 bg-gradient-to-r from-orange-50 to-amber-50'
                     : 'border-gray-200'
                 }`}>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 rtl:space-x-reverse">
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
@@ -631,11 +631,11 @@ function EvaluationView({
                             {student.student_name.charAt(0)}
                           </span>
                         </div>
-                        <div>
-                          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             <h3 className="font-semibold text-gray-900">{student.student_name}</h3>
                             {student.is_carried_over && (
-                              <span className="px-2 py-1 bg-orange-500 text-white text-xs rounded-full font-medium">
+                              <span className="px-2 py-0.5 bg-orange-500 text-white text-[10px] rounded-full font-medium whitespace-nowrap">
                                 {student.original_stage && student.original_stage !== student.student_stage
                                   ? `محمل من ${student.original_stage}`
                                   : 'محمل'
@@ -643,8 +643,7 @@ function EvaluationView({
                               </span>
                             )}
                           </div>
-                          <p className="text-sm text-gray-600">{student.student_email}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 mt-0.5">
                             المرحلة {student.student_stage}
                             {student.is_carried_over && (
                               <span className="text-orange-600 font-medium mr-2">
@@ -656,7 +655,7 @@ function EvaluationView({
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       {/* Current grade display */}
                       {currentGrade !== null && (
                         <div className={`text-center px-3 py-2 rounded-lg border ${student.is_carried_over ? 'bg-orange-50 border-orange-300' : 'bg-green-50 border-green-200'}`}>

@@ -204,7 +204,7 @@ export default function StudentLecturesPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full font-medium">
+                      <div className="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
                         {stage.courses.reduce((total, course) => total + course.lectures.length, 0)} محاضرة
                       </div>
                       <svg
@@ -246,7 +246,7 @@ export default function StudentLecturesPage() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-full font-medium">
+                                <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded-full font-medium whitespace-nowrap flex-shrink-0">
                                   {course.lectures.length} محاضرة
                                 </span>
                                 <svg
