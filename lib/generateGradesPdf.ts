@@ -212,10 +212,6 @@ export async function generateTeacherGradesPdf(options: TeacherPdfOptions) {
           <div style="font-size:28px;font-weight:bold;color:#dc2626;">${failed.length}</div>
           <div style="font-size:12px;color:#64748b;margin-top:4px;">راسب</div>
         </div>
-        <div style="flex:1;background:#f8fafc;border:2px solid #c8a44e;border-radius:14px;padding:18px 10px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#c8a44e;">${avg}${avg !== '--' ? '%' : ''}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">المعدل العام</div>
-        </div>
       </div>
 
       <!-- Table -->
@@ -319,10 +315,6 @@ export async function generateStudentGradesPdf(options: StudentPdfOptions) {
         <div style="flex:1;background:#f8fafc;border:2px solid #059669;border-radius:14px;padding:18px 10px;text-align:center;">
           <div style="font-size:28px;font-weight:bold;color:#059669;">${passedCourses.length}</div>
           <div style="font-size:12px;color:#64748b;margin-top:4px;">المواد المرصودة</div>
-        </div>
-        <div style="flex:1;background:#f8fafc;border:2px solid #c8a44e;border-radius:14px;padding:18px 10px;text-align:center;">
-          <div style="font-size:28px;font-weight:bold;color:#c8a44e;">${avgStr}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">المعدل العام</div>
         </div>
       </div>
 
