@@ -25,11 +25,20 @@ type HomeworkItem = {
   has_file: boolean;
 };
 
+type CourseGroup = {
+  course_id: number;
+  course_name: string;
+  course_code: string;
+  teacher_name: string;
+  homework: HomeworkItem[];
+};
+
 export default function StudentHomeworkPage() {
   const { data: session } = useSession();
   const [homework, setHomework] = useState<HomeworkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedCourses, setExpandedCourses] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     if (!session?.user?.email) return;
@@ -41,51 +50,60 @@ export default function StudentHomeworkPage() {
       setLoading(true);
       const response = await fetch("/api/student/homework");
       const data = await response.json();
-
       if (response.ok) {
-        setHomework(Array.isArray(data) ? data : []);
+        const items = Array.isArray(data) ? data : [];
+        setHomework(items);
         setError(null);
+        // افتح المادة الأولى تلقائياً
+        if (items.length > 0) {
+          setExpandedCourses(new Set([items[0].course_id]));
+        }
       } else {
         setError(data.error || "حدث خطأ في جلب الواجبات");
       }
-    } catch (err) {
+    } catch {
       setError("خطأ في الاتصال بالخادم");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ar-SA', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  // تجميع الواجبات حسب المادة
+  const courseGroups: CourseGroup[] = React.useMemo(() => {
+    const map = new Map<number, CourseGroup>();
+    homework.forEach((item) => {
+      if (!map.has(item.course_id)) {
+        map.set(item.course_id, {
+          course_id: item.course_id,
+          course_name: item.course_name,
+          course_code: item.course_code,
+          teacher_name: item.teacher_name,
+          homework: [],
+        });
+      }
+      map.get(item.course_id)!.homework.push(item);
+    });
+    return Array.from(map.values());
+  }, [homework]);
+
+  const toggleCourse = (courseId: number) => {
+    setExpandedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        next.delete(courseId);
+      } else {
+        next.add(courseId);
+      }
+      return next;
     });
   };
 
-  const getTimeUntilDeadline = (dueDateString: string) => {
-    const now = new Date();
-    const deadline = new Date(dueDateString);
-    const diffTime = deadline.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
-
-    if (diffTime < 0) {
-      return `متأخر ${Math.abs(diffDays)} يوم`;
-    } else if (diffDays === 0) {
-      if (diffHours > 0) {
-        return `باقي ${diffHours} ساعة`;
-      } else {
-        return "ينتهي خلال ساعة";
-      }
-    } else if (diffDays === 1) {
-      return "ينتهي غداً";
-    } else {
-      return `باقي ${diffDays} يوم`;
-    }
-  };
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("ar-SA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
 
   const getStatusStyle = (item: HomeworkItem) => {
     if (item.grade !== null) {
@@ -104,22 +122,19 @@ export default function StudentHomeworkPage() {
       const response = await fetch("/api/student/content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contentId })
+        body: JSON.stringify({ contentId }),
       });
-
       if (response.ok) {
         const data = await response.json();
         if (data.content?.file_data) {
           const byteCharacters = atob(data.content.file_data);
-          const byteNumbers = new Array(byteCharacters.length);
+          const byteArray = new Uint8Array(byteCharacters.length);
           for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
+            byteArray[i] = byteCharacters.charCodeAt(i);
           }
-          const byteArray = new Uint8Array(byteNumbers);
           const blob = new Blob([byteArray]);
-
           const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
+          const a = document.createElement("a");
           a.href = url;
           a.download = fileName;
           document.body.appendChild(a);
@@ -132,8 +147,7 @@ export default function StudentHomeworkPage() {
       } else {
         alert("فشل في تحميل الملف");
       }
-    } catch (err) {
-      console.error("Download error:", err);
+    } catch {
       alert("خطأ في تحميل الملف");
     }
   };
@@ -152,165 +166,179 @@ export default function StudentHomeworkPage() {
   return (
     <div className="min-h-screen bg-[#f0f4f8] bg-pattern overflow-x-hidden p-3 sm:p-4 md:p-8 font-sans" dir="rtl">
       <div className="w-full max-w-5xl mx-auto">
+
         {/* Header */}
-        <div className="mb-8 animate-fade-in-up">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-1.5 h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
-            <p className="text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">بوابة الطالب</p>
+        <div className="mb-6 md:mb-8 animate-fade-in-up">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-1.5 h-5 md:h-6 bg-gradient-to-b from-[#2563eb] to-[#c8a44e] rounded-full"></div>
+            <p className="text-[10px] md:text-xs font-bold text-[#2563eb]/60 uppercase tracking-widest">بوابة الطالب</p>
           </div>
-          <h1 className="text-3xl font-black text-[#0f2744] tracking-tight">واجباتي</h1>
-          <p className="text-slate-500 text-sm mt-1">جميع الواجبات المطلوبة منك</p>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[#0f2744] tracking-tight">واجباتي</h1>
+          <p className="text-slate-500 text-xs md:text-sm mt-1">
+            {courseGroups.length > 0
+              ? `${courseGroups.length} مادة — ${homework.length} واجب`
+              : "لا توجد واجبات حالياً"}
+          </p>
         </div>
 
-        {/* Error Display */}
+        {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.82 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              {error}
-            </div>
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6 text-sm">
+            {error}
           </div>
         )}
 
-        {/* Homework List */}
-        <div className="space-y-4 animate-fade-in-up">
-          {homework.length === 0 ? (
-            <div className="card-pro py-20 text-center">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-bold text-slate-600 mb-2">لا توجد واجبات</h3>
-              <p className="text-slate-400 text-sm">ستظهر الواجبات هنا عندما يكلفك أساتذتك بها</p>
+        {/* Empty State */}
+        {courseGroups.length === 0 && !error && (
+          <div className="card-pro py-20 text-center">
+            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-10 h-10 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
             </div>
-          ) : (
-            homework.map((item) => (
-              <div key={item.id} className="card-pro p-6 hover:shadow-lg transition-all duration-300">
-                <div className="flex flex-col lg:flex-row gap-6">
-                  {/* Main Content */}
-                  <div className="flex-1 space-y-4">
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#2563eb]/10 text-[#2563eb] rounded-lg flex items-center justify-center">
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                            </svg>
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-bold text-slate-800">{item.title}</h3>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="text-sm font-bold text-slate-600">{item.course_name}</span>
-                              <span className="text-slate-300">•</span>
-                              <span className="text-sm text-slate-500">د. {item.teacher_name}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+            <h3 className="text-lg font-bold text-slate-600 mb-2">لا توجد واجبات</h3>
+            <p className="text-slate-400 text-sm">ستظهر الواجبات هنا عندما يكلفك أساتذتك بها</p>
+          </div>
+        )}
 
-                      {/* Status Badge */}
-                      <span className={`px-3 py-1.5 rounded-lg text-sm font-bold border whitespace-nowrap ${getStatusStyle(item)}`}>
-                        {item.submission_status}
-                      </span>
+        {/* Courses grouped */}
+        <div className="space-y-4 animate-fade-in-up">
+          {courseGroups.map((group) => {
+            const isOpen = expandedCourses.has(group.course_id);
+            const pendingCount = group.homework.filter(
+              (h) => !h.submitted_at && !h.is_past_due
+            ).length;
+
+            return (
+              <div key={group.course_id} className="card-pro overflow-hidden">
+
+                {/* ── Course Header (clickable) ── */}
+                <button
+                  onClick={() => toggleCourse(group.course_id)}
+                  className="w-full flex items-center justify-between p-4 md:p-5 hover:bg-slate-50 transition-colors text-right"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Icon */}
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-[#2563eb] to-[#1d4ed8] text-white rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
                     </div>
 
-                    {/* Description */}
-                    {item.description && (
-                      <div className="bg-slate-50 p-4 rounded-lg">
-                        <p className="text-slate-700 text-sm leading-relaxed">{item.description}</p>
-                      </div>
-                    )}
-
-                    {/* File Attachment */}
-                    {item.file_name && item.has_file && (
-                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                        </svg>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-blue-800">ملف مرفق</p>
-                          <p className="text-xs text-blue-600">{item.file_name}</p>
-                        </div>
-                        <button
-                          onClick={() => downloadFile(item.id, item.file_name!)}
-                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg font-bold transition-colors"
-                        >
-                          تحميل
-                        </button>
-                      </div>
-                    )}
+                    {/* Text - overflow protected */}
+                    <div className="min-w-0 text-right">
+                      <h2 className="font-black text-[#0f2744] text-sm md:text-base truncate">
+                        {group.course_name}
+                      </h2>
+                      <p className="text-slate-500 text-xs truncate">د. {group.teacher_name}</p>
+                    </div>
                   </div>
 
-                  {/* Side Panel */}
-                  <div className="lg:w-72 space-y-4">
-                    {/* Deadline */}
-                    <div className={`p-4 rounded-lg border ${item.is_past_due ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <svg className={`w-4 h-4 ${item.is_past_due ? 'text-red-600' : 'text-blue-600'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className={`text-xs font-bold ${item.is_past_due ? 'text-red-700' : 'text-blue-700'}`}>
-                          الموعد النهائي
-                        </span>
-                      </div>
-                      <p className={`text-sm font-bold ${item.is_past_due ? 'text-red-800' : 'text-blue-800'}`}>
-                        {formatDate(item.due_date)}
-                      </p>
-                      <p className={`text-xs mt-1 ${item.is_past_due ? 'text-red-600' : 'text-blue-600'}`}>
-                        {getTimeUntilDeadline(item.due_date)}
-                      </p>
-                    </div>
+                  {/* Badges + Arrow */}
+                  <div className="flex items-center gap-2 flex-shrink-0 mr-2">
+                    {pendingCount > 0 && (
+                      <span className="text-[10px] font-bold bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full whitespace-nowrap">
+                        {pendingCount} معلق
+                      </span>
+                    )}
+                    <span className="text-[11px] font-bold bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full whitespace-nowrap">
+                      {group.homework.length} واجب
+                    </span>
+                    <svg
+                      className={`w-4 h-4 text-slate-400 transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </button>
 
-                    {/* Grade Display */}
-                    {item.grade !== null && (
-                      <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                        <div className="text-3xl font-black text-green-600 mb-1">{item.grade}</div>
-                        <div className="text-sm text-green-700 font-bold">من 100</div>
+                {/* ── Homework List (collapsible) ── */}
+                {isOpen && (
+                  <div className="border-t border-slate-100 divide-y divide-slate-50">
+                    {group.homework.map((item) => (
+                      <div key={item.id} className="p-4 md:p-5 hover:bg-slate-50/70 transition-colors">
+
+                        {/* Row: title + status */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <h3 className="font-bold text-slate-800 text-sm leading-snug flex-1 min-w-0">
+                            {item.title}
+                          </h3>
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border whitespace-nowrap flex-shrink-0 ${getStatusStyle(item)}`}>
+                            {item.submission_status}
+                          </span>
+                        </div>
+
+                        {/* Description */}
+                        {item.description && (
+                          <p className="text-xs text-slate-500 mb-3 leading-relaxed line-clamp-2">
+                            {item.description}
+                          </p>
+                        )}
+
+                        {/* Meta row */}
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className={item.is_past_due ? "text-red-600 font-bold" : ""}>
+                              {formatDate(item.due_date)}
+                            </span>
+                          </span>
+                          {item.grade !== null && (
+                            <span className="font-bold text-emerald-600">الدرجة: {item.grade}/100</span>
+                          )}
+                        </div>
+
+                        {/* File attachment */}
+                        {item.file_name && item.has_file && (
+                          <div className="flex items-center justify-between gap-2 p-2.5 bg-blue-50 rounded-lg border border-blue-200 mb-3">
+                            <span className="text-xs text-blue-700 truncate flex-1">{item.file_name}</span>
+                            <button
+                              onClick={() => downloadFile(item.id, item.file_name!)}
+                              className="text-[10px] font-bold px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex-shrink-0"
+                            >
+                              تحميل
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Feedback */}
                         {item.feedback && (
-                          <div className="mt-3 p-3 bg-white rounded-lg border border-green-200">
-                            <p className="text-xs text-green-700 font-bold mb-1">ملاحظات الأستاذ:</p>
+                          <div className="p-2.5 bg-green-50 rounded-lg border border-green-200 mb-3">
+                            <p className="text-[10px] font-bold text-green-700 mb-0.5">ملاحظات الأستاذ:</p>
                             <p className="text-xs text-slate-700">{item.feedback}</p>
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {/* Action Button */}
-                    <Link
-                      href={`/student-dashboard/homework/${item.id}`}
-                      className="w-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white py-3 px-4 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                      {item.grade !== null ? "عرض النتيجة" : item.submitted_at ? "عرض التسليم" : "حل الواجب"}
-                    </Link>
-
-                    {/* Status Indicators */}
-                    {!item.submitted_at && !item.is_past_due && (
-                      <div className="text-center p-2 bg-orange-50 rounded-lg border border-orange-200">
-                        <span className="text-xs font-bold text-orange-700">⚠️ يحتاج تسليم</span>
+                        {/* Action button */}
+                        <Link
+                          href={`/student-dashboard/homework/${item.id}`}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-lg transition-colors"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          {item.grade !== null ? "عرض النتيجة" : item.submitted_at ? "عرض التسليم" : "حل الواجب"}
+                        </Link>
                       </div>
-                    )}
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
-            ))
-          )}
+            );
+          })}
         </div>
 
-        {/* Refresh Button */}
+        {/* Refresh */}
         <div className="mt-8 text-center">
           <button
             onClick={fetchData}
             className="bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 hover:border-[#2563eb]/30 px-6 py-3 rounded-xl font-bold text-sm flex items-center gap-2 mx-auto transition-all shadow-sm hover:shadow-md"
           >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             تحديث الواجبات
